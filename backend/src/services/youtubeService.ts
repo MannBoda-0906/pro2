@@ -239,13 +239,20 @@ export class YouTubeService {
   }
 
   /**
-   * Fetches transcript or generates rich semantic representation from real video content.
-   * NEVER fails or interrupts the user workflow.
+   * Fetches authentic transcript using prioritized caption track selection,
+   * language targeting, deduplication, and caching.
    */
-  static async fetchTranscript(videoId: string, title?: string, author?: string): Promise<{
+  static async fetchTranscript(
+    videoId: string,
+    title?: string,
+    author?: string,
+    preferredLanguage: string = 'en'
+  ): Promise<{
     transcript: TranscriptSegment[];
     rawText: string;
-    source: 'youtube' | 'demo' | 'video-direct';
+    languageCode?: string;
+    trackType?: 'manual' | 'auto-generated';
+    source: 'youtube' | 'demo' | 'manual';
   }> {
     // 1. Check built-in demo videos first
     if (DEMO_VIDEOS[videoId]) {
@@ -254,118 +261,22 @@ export class YouTubeService {
       return {
         transcript: demo.transcript,
         rawText,
+        languageCode: 'en',
+        trackType: 'manual',
         source: 'demo'
       };
     }
 
-    // 2. Try fetching public YouTube captions (try without lang first, then en)
-    try {
-      let captions: any[] | null = null;
-      try {
-        captions = await YoutubeTranscript.fetchTranscript(videoId);
-      } catch {
-        try {
-          captions = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' });
-        } catch {
-          // Fall through to semantic video inspection
-        }
-      }
-
-      if (captions && captions.length > 0) {
-        const transcript: TranscriptSegment[] = captions.map(c => ({
-          text: decodeHtmlEntities(c.text.trim()),
-          start: Math.round(c.offset / 1000),
-          duration: Math.round(c.duration / 1000)
-        })).filter(c => c.text.length > 0);
-
-        if (transcript.length > 0) {
-          const rawText = transcript.map(t => t.text).join(' ');
-          return {
-            transcript,
-            rawText,
-            source: 'youtube'
-          };
-        }
-      }
-    } catch (err: any) {
-      console.log(`Note: Captions scraper notice for ${videoId}: ${err?.message || 'checking video directly'}`);
-    }
-
-    // 3. Direct Video Inspection & Semantic Synthesis Mode
-    // Uses real video details, chapters, and description from the video link!
-    const inspected = await this.inspectVideo(videoId).catch(() => null);
-    const effectiveTitle = inspected?.title || title || `Video ${videoId}`;
-    const effectiveAuthor = inspected?.author || author || 'YouTube Creator';
-    const description = inspected?.description || '';
-    const chapters = inspected?.chapters || [];
-
-    const segments: TranscriptSegment[] = [];
-
-    // If real chapters were found in the description, use them!
-    if (chapters.length > 0) {
-      for (let i = 0; i < chapters.length; i++) {
-        const ch = chapters[i];
-        const nextStart = chapters[i + 1] ? chapters[i + 1].start : ch.start + 180;
-        segments.push({
-          text: `Chapter: ${ch.text}. Detailed discussion of ${ch.text} in the context of ${effectiveTitle}.`,
-          start: ch.start,
-          duration: Math.max(30, nextStart - ch.start)
-        });
-      }
-    }
-
-    // Extract informative description paragraphs (filtering out links and promotional text)
-    if (description) {
-      const descLines = description
-        .split(/\r?\n/)
-        .map(l => l.trim())
-        .filter(l => l.length > 25 && !l.startsWith('http://') && !l.startsWith('https://') && !l.startsWith('#'));
-
-      const usefulParagraphs = descLines.slice(0, 8);
-      usefulParagraphs.forEach((para, idx) => {
-        segments.push({
-          text: para,
-          start: (idx + 1) * 60,
-          duration: 60
-        });
-      });
-    }
-
-    // Ensure fallback baseline segments are grounded in the verified title and author
-    if (segments.length === 0) {
-      segments.push(
-        {
-          text: `Comprehensive presentation on "${effectiveTitle}" delivered by ${effectiveAuthor}. Foundational definitions, core premises, and context.`,
-          start: 0,
-          duration: 90
-        },
-        {
-          text: `Detailed analysis and mechanisms of concepts covered in "${effectiveTitle}". Theoretical frameworks and analytical breakdowns.`,
-          start: 90,
-          duration: 180
-        },
-        {
-          text: `Practical problem-solving, real-world examples, and case applications demonstrated in "${effectiveTitle}".`,
-          start: 270,
-          duration: 180
-        },
-        {
-          text: `Key conclusions, practical takeaways, and study review summary from "${effectiveTitle}".`,
-          start: 450,
-          duration: 120
-        }
-      );
-    }
-
-    // Sort segments chronologically
-    segments.sort((a, b) => a.start - b.start);
-
-    const rawText = segments.map(s => s.text).join(' ');
+    // 2. Fetch using Robust CaptionService (prioritizing manual in preferred lang, ASR in preferred lang, English, etc.)
+    const { CaptionService } = await import('./captionService.js');
+    const result = await CaptionService.fetchTranscript(videoId, preferredLanguage);
 
     return {
-      transcript: segments,
-      rawText,
-      source: 'video-direct'
+      transcript: result.transcript,
+      rawText: result.rawText,
+      languageCode: result.languageCode,
+      trackType: result.trackType,
+      source: 'youtube'
     };
   }
 }

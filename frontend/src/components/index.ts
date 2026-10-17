@@ -13,13 +13,8 @@ export * from './youtube/HeroInput';
 export * from './youtube/VideoPlayerCard';
 export * from './youtube/ManualTranscriptModal';
 
-// Summary Components
-export * from './summary/SummaryTab';
-export * from './summary/FlashcardsTab';
-
 // Quiz Components
 export * from './quiz/QuizTab';
-export * from './quiz/SummarizedQuizTab';
 export * from './quiz/TopicCoverageReportCard';
 export * from './quiz/LearningModePerformanceCard';
 

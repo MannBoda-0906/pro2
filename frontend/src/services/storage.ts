@@ -59,6 +59,58 @@ export class StorageService {
     }
   }
 
+  /**
+   * Phase 2: Session-scoped storage for quiz and analysis
+   */
+  static saveQuizSession(videoId: string, sessionId: string, data: any): void {
+    try {
+      // First clean any prior session for this video to prevent memory leaks
+      this.clearQuizSessions(videoId);
+      const key = `studyTubeQuiz:${videoId}:${sessionId}`;
+      localStorage.setItem(key, JSON.stringify({
+        videoId,
+        analysisSessionId: sessionId,
+        savedAt: Date.now(),
+        data
+      }));
+    } catch (e) {
+      console.error('Failed to save quiz session to localStorage:', e);
+    }
+  }
+
+  static getQuizSession(videoId: string, sessionId: string): any | null {
+    try {
+      const key = `studyTubeQuiz:${videoId}:${sessionId}`;
+      const item = localStorage.getItem(key);
+      if (!item) return null;
+      const parsed = JSON.parse(item);
+      if (parsed.videoId === videoId && parsed.analysisSessionId === sessionId) {
+        return parsed.data;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  static clearQuizSessions(exceptVideoId?: string, exceptSessionId?: string): void {
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('studyTubeQuiz:') || k === 'studytube_quiz_cache' || k === 'latestQuiz')) {
+          if (exceptVideoId && exceptSessionId && k === `studyTubeQuiz:${exceptVideoId}:${exceptSessionId}`) {
+            continue;
+          }
+          keysToRemove.push(k);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch (e) {
+      console.error('Failed clearing quiz sessions:', e);
+    }
+  }
+
   static getApiKey(): string {
     try {
       return localStorage.getItem(STORAGE_KEYS.API_KEY) || '';
@@ -79,26 +131,58 @@ export class StorageService {
     }
   }
 
-  static getTheme(): 'light' | 'dark' {
+  static getThemeMode(): 'light' | 'dark' | 'system' {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.THEME);
-      if (saved === 'dark' || saved === 'light') return saved;
+      if (saved === 'dark' || saved === 'light' || saved === 'system') return saved;
+      return 'system';
+    } catch {
+      return 'system';
+    }
+  }
+
+  static getEffectiveTheme(mode?: 'light' | 'dark' | 'system'): 'light' | 'dark' {
+    const currentMode = mode || this.getThemeMode();
+    if (currentMode === 'dark') return 'dark';
+    if (currentMode === 'light') return 'light';
+    try {
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     } catch {
       return 'light';
     }
   }
 
-  static setTheme(theme: 'light' | 'dark'): void {
+  static applyTheme(mode: 'light' | 'dark' | 'system'): 'light' | 'dark' {
+    const effective = this.getEffectiveTheme(mode);
     try {
-      localStorage.setItem(STORAGE_KEYS.THEME, theme);
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
+      const root = document.documentElement;
+      root.setAttribute('data-theme', effective);
+      if (effective === 'dark') {
+        root.classList.add('dark');
       } else {
-        document.documentElement.classList.remove('dark');
+        root.classList.remove('dark');
       }
+      root.style.colorScheme = effective;
     } catch (e) {
-      console.error('Failed to set theme:', e);
+      console.error('Failed to apply theme to DOM:', e);
     }
+    return effective;
+  }
+
+  static setThemeMode(mode: 'light' | 'dark' | 'system'): 'light' | 'dark' {
+    try {
+      localStorage.setItem(STORAGE_KEYS.THEME, mode);
+    } catch (e) {
+      console.error('Failed to save theme to localStorage:', e);
+    }
+    return this.applyTheme(mode);
+  }
+
+  static getTheme(): 'light' | 'dark' {
+    return this.getEffectiveTheme();
+  }
+
+  static setTheme(theme: 'light' | 'dark'): void {
+    this.setThemeMode(theme);
   }
 }

@@ -3,15 +3,19 @@
   "version": "1.0.0",
   "description": "AI YouTube Summarizer, Study Notes & Concept-Level Quiz Generator",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "backend": "cd backend && npm run dev",
-    "frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "backend": "npm --prefix backend run dev",
+    "frontend": "npm --prefix frontend run dev",
     "server": "npm run backend",
     "client": "npm run frontend",
     "dev": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run backend\" \"npm run frontend\"",
-    "build": "cd frontend && npm run build && cd ../backend && npm run build",
-    "start": "cd backend && npm run start"
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "start": "npm --prefix backend run start"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

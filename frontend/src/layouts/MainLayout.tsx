@@ -24,7 +24,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   children
 }) => {
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="min-h-screen flex flex-col text-[#17172D] transition-colors relative">
       <Header
         theme={theme}
         onToggleTheme={onToggleTheme}

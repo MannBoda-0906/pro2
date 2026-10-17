@@ -9,6 +9,7 @@ import {
   VideoMetadata
 } from '../types';
 import { StorageService } from './storage';
+import { getErrorMessage } from '../utils';
 
 const API_BASE = '/api';
 
@@ -57,24 +58,36 @@ export class ApiService {
     url?: string;
     manualTranscript?: string;
     demoId?: string;
+    language?: string;
+    analysisSessionId?: string;
+    signal?: AbortSignal;
   }): Promise<{
+    analysisSessionId?: string;
+    videoId?: string;
+    status?: string;
     metadata: VideoMetadata;
     transcript: TranscriptSegment[];
     rawText: string;
     chunkCount: number;
     source: string;
   }> {
+    const { signal, ...bodyParams } = params;
     const res = await fetch(`${API_BASE}/videos/process`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(params),
+      body: JSON.stringify(bodyParams),
+      signal
     });
 
     const data = await res.json();
 
-    if (!res.ok || !data.success) {
-      const error: any = new Error(data.error || 'Failed to process video.');
-      error.needsManualTranscript = data.needsManualTranscript;
+    if (!res.ok || !data.success || data.ok === false) {
+      const error: any = new Error(getErrorMessage(data.error || data || 'Failed to process video.'));
+      error.code = data.error?.code || data.code;
+      error.needsManualTranscript =
+        data.needsManualTranscript ||
+        data.error?.code === 'NO_CAPTIONS_AVAILABLE' ||
+        data.error?.code === 'CAPTIONS_BLOCKED_OR_FETCH_FAILED';
       error.metadata = data.metadata;
       throw error;
     }
@@ -91,16 +104,20 @@ export class ApiService {
     title: string;
     transcript: TranscriptSegment[];
     language?: string;
+    analysisSessionId?: string;
+    signal?: AbortSignal;
   }): Promise<SummaryData> {
+    const { signal, ...bodyParams } = params;
     const res = await fetch(`${API_BASE}/summaries/generate`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify(params),
+      body: JSON.stringify(bodyParams),
+      signal
     });
 
     const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to generate summary.');
+    if (!res.ok || !data.success || data.ok === false) {
+      throw new Error(getErrorMessage(data.error || data || 'Failed to generate summary.'));
     }
     return data.summary;
   }
@@ -116,18 +133,42 @@ export class ApiService {
     difficulty?: 'easy' | 'medium' | 'hard';
     count?: number;
     language?: string;
+    analysisSessionId?: string;
+    signal?: AbortSignal;
   }): Promise<QuizData> {
+    const { signal, ...bodyParams } = params;
     const res = await fetch(`${API_BASE}/quizzes/generate`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(bodyParams),
+      signal
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success || data.ok === false) {
+      throw new Error(getErrorMessage(data.error || data || 'Failed to generate quiz.'));
+    }
+    return data.quiz;
+  }
+
+  /**
+   * Evaluate Completed Quiz Submission & Compute Detailed Concept Performance
+   */
+  static async evaluateQuiz(params: {
+    quiz: QuizData;
+    userAnswers: Record<string, string>;
+  }): Promise<any> {
+    const res = await fetch(`${API_BASE}/quizzes/evaluate`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(params),
     });
 
     const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to generate quiz.');
+    if (!res.ok || !data.success || data.ok === false) {
+      throw new Error(getErrorMessage(data.error || data || 'Failed to evaluate quiz.'));
     }
-    return data.quiz;
+    return data.result;
   }
 
   /**
@@ -147,8 +188,8 @@ export class ApiService {
     });
 
     const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to generate practice questions.');
+    if (!res.ok || !data.success || data.ok === false) {
+      throw new Error(getErrorMessage(data.error || data || 'Failed to generate practice questions.'));
     }
     return data.questions;
   }
@@ -169,8 +210,8 @@ export class ApiService {
     });
 
     const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to generate flashcards.');
+    if (!res.ok || !data.success || data.ok === false) {
+      throw new Error(getErrorMessage(data.error || data || 'Failed to generate flashcards.'));
     }
     return data.flashcards;
   }
@@ -191,8 +232,8 @@ export class ApiService {
     });
 
     const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to get answer from assistant.');
+    if (!res.ok || !data.success || data.ok === false) {
+      throw new Error(getErrorMessage(data.error || data || 'Failed to get answer from assistant.'));
     }
     return data;
   }

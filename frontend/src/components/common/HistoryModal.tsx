@@ -5,7 +5,6 @@ import {
   Search,
   Trash2,
   Play,
-  ExternalLink,
   BookOpen,
   Calendar
 } from 'lucide-react';
@@ -54,20 +53,20 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[85vh]">
-        {/* Header */}
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-brand-100 dark:bg-brand-950 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#17172D]/35 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-2xl bg-white/95 backdrop-blur-2xl rounded-3xl border border-[#DFE1F0] shadow-floating flex flex-col max-h-[85vh] overflow-hidden">
+        {/* Header - Layer 2 Glass Surface */}
+        <div className="p-6 border-b border-[#DFE1F0] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#EEEEFF] text-[#4938C8] flex items-center justify-center shadow-xs">
               <History className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
-                Study History
+              <h3 className="font-bold text-lg text-[#17172D] tracking-tight">
+                My Learning History
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {history.length} saved video study guides
+              <p className="text-xs text-[#666A83]">
+                {history.length} saved lessons and interactive study guides
               </p>
             </div>
           </div>
@@ -76,14 +75,15 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
             {history.length > 0 && (
               <button
                 onClick={onClearAll}
-                className="text-xs text-rose-500 hover:text-rose-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                className="text-xs text-rose-600 hover:text-rose-700 font-semibold px-3 py-1.5 rounded-xl hover:bg-rose-50 transition-colors"
               >
                 Clear All
               </button>
             )}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-2 rounded-xl text-[#666A83] hover:text-[#17172D] hover:bg-[#EEEEFF] transition-all active:scale-[0.98]"
+              aria-label="Close modal"
             >
               <X className="w-5 h-5" />
             </button>
@@ -91,15 +91,15 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
         </div>
 
         {/* Search Filter */}
-        <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30">
+        <div className="px-6 py-3.5 border-b border-[#DFE1F0] bg-[#F8F9FD]/60">
           <div className="relative flex items-center">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+            <Search className="w-4 h-4 text-[#666A83] absolute left-3.5 pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by title or channel..."
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              placeholder="Search by lesson title or instructor channel..."
+              className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm rounded-xl border border-[#DFE1F0] bg-white text-[#17172D] placeholder-[#666A83] focus:outline-none focus:ring-2 focus:ring-[#5B46E8]/20 focus:border-[#5B46E8] shadow-xs"
             />
           </div>
         </div>
@@ -107,62 +107,62 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
         {/* List Content */}
         <div className="p-6 overflow-y-auto space-y-3 flex-1">
           {filtered.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 dark:text-slate-500 text-xs">
-              {search ? 'No videos match your search query.' : 'No saved videos yet. Process a video to save it here!'}
+            <div className="py-12 text-center text-[#666A83] text-xs sm:text-sm">
+              {search ? 'No lessons match your search query.' : 'No saved lessons yet. Process a study video to automatically save it here!'}
             </div>
           ) : (
             filtered.map(item => (
               <div
                 key={item.id}
-                className="p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-brand-500/50 hover:shadow-sm transition-all flex items-center justify-between gap-3 group"
+                className="p-3.5 rounded-2xl border border-[#DFE1F0] bg-white hover:border-[#5B46E8] hover:shadow-resting hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-between gap-3 group"
               >
                 <div
                   onClick={() => {
                     onSelectVideo(item);
                     onClose();
                   }}
-                  className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+                  className="flex items-center gap-3.5 cursor-pointer flex-1 min-w-0"
                 >
-                  <div className="relative w-20 h-12 rounded-lg overflow-hidden bg-slate-950 shrink-0 border border-slate-800">
+                  <div className="relative w-20 h-13 rounded-xl overflow-hidden bg-[#EEEEFF] shrink-0 border border-[#DFE1F0] shadow-xs">
                     <img
                       src={item.thumbnailUrl}
                       alt={item.title}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-slate-900/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Play className="w-4 h-4 text-white fill-current" />
+                    <div className="absolute inset-0 bg-[#4938C8]/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Play className="w-5 h-5 text-white fill-current" />
                     </div>
                   </div>
 
                   <div className="min-w-0">
-                    <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                    <h4 className="font-bold text-xs sm:text-sm text-[#17172D] truncate group-hover:text-[#4938C8] transition-colors">
                       {item.title}
                     </h4>
-                    <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      <span>{item.author}</span>
+                    <div className="flex items-center gap-2.5 text-[11px] text-[#666A83] mt-1">
+                      <span className="font-medium">{item.author}</span>
                       <span>•</span>
                       <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
+                        <Calendar className="w-3 h-3 text-[#666A83]" />
                         {formatDate(item.createdAt)}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => {
                       onSelectVideo(item);
                       onClose();
                     }}
-                    className="p-1.5 rounded-lg text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/80 transition-colors"
+                    className="p-2 rounded-xl text-[#4938C8] hover:bg-[#EEEEFF] transition-all active:scale-[0.98]"
                     title="Open Study Guide"
                   >
                     <BookOpen className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => onDeleteItem(item.id)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
+                    className="p-2 rounded-xl text-[#666A83] hover:text-rose-600 hover:bg-rose-50 transition-all active:scale-[0.98]"
                     title="Delete from history"
                   >
                     <Trash2 className="w-4 h-4" />

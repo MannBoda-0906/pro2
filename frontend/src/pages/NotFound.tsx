@@ -8,17 +8,19 @@ export interface NotFoundPageProps {
 export const NotFoundPage: React.FC<NotFoundPageProps> = ({ onGoHome }) => {
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
-      <div className="w-16 h-16 rounded-2xl bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 flex items-center justify-center mb-4">
+      <div className="w-16 h-16 rounded-3xl bg-[#EEEEFF] text-[#4938C8] flex items-center justify-center mb-5 shadow-resting">
         <AlertCircle className="w-8 h-8" />
       </div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Page Not Found</h1>
-      <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mb-6">
-        The requested lesson or study resource does not exist or has been moved.
+      <h1 className="text-2xl sm:text-3xl font-black text-[#17172D] mb-2 tracking-tight">
+        Page Not Found
+      </h1>
+      <p className="text-sm text-[#666A83] max-w-md mb-8 leading-relaxed">
+        The requested lesson or study resource does not exist or has been moved to another section.
       </p>
       {onGoHome && (
         <button
           onClick={onGoHome}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-6 py-3 text-sm font-bold text-white bg-[#4938C8] hover:bg-[#5B46E8] rounded-2xl transition-all shadow-cta hover:shadow-cta-hover active:scale-[0.98]"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Home

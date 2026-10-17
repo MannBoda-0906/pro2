@@ -1,43 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Sparkles,
-  BookOpen,
   HelpCircle,
-  Layers,
-  Brain,
-  CheckCircle2,
-  AlertCircle
+  Brain
 } from 'lucide-react';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { HeroInput } from './components/youtube/HeroInput';
 import { VideoPlayerCard } from './components/youtube/VideoPlayerCard';
-import { SummarizedQuizTab } from './components/quiz/SummarizedQuizTab';
-import { SummaryTab } from './components/summary/SummaryTab';
 import { QuizTab } from './components/quiz/QuizTab';
-import { FlashcardsTab } from './components/summary/FlashcardsTab';
 import { AssistantTab } from './components/common/AssistantTab';
 import { HistoryModal } from './components/common/HistoryModal';
 import { SettingsModal } from './components/common/SettingsModal';
 import { ManualTranscriptModal } from './components/youtube/ManualTranscriptModal';
 import { ToastContainer, ToastMessage } from './components/common/Toast';
+import { DevDebugPanel } from './components/common/DevDebugPanel';
 
 import { ApiService } from './services/api';
 import { StorageService } from './services/storage';
+import { VideoIdentity } from './utils/videoIdentity';
+import { isFeatureDisabled, cleanOldFeatureStorage } from './utils/featureGuard';
+import { getErrorMessage } from './utils';
 import {
   AssistantMessage,
   DemoSample,
-  Flashcard,
   HistoryItem,
   QuizData,
-  SummaryData,
   TranscriptSegment,
   VideoMetadata
 } from './types';
 
 export const App: React.FC = () => {
-  // Theme State
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => StorageService.getTheme());
+  // Theme Mode State (Light, Dark, System — Defaulting to System)
+  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(() => StorageService.getThemeMode());
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => StorageService.getEffectiveTheme(themeMode));
+
+  // Phase 2: Active Session & Cancellation Refs
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+  const currentSessionRef = React.useRef<{
+    analysisSessionId: string;
+    videoId: string;
+    url?: string;
+  } | null>(null);
+  const [discardedCount, setDiscardedCount] = useState<number>(0);
+  const [lastDiscardedReason, setLastDiscardedReason] = useState<string>('');
 
   // App Workflow State
   const [activeVideo, setActiveVideo] = useState<{
@@ -46,15 +51,13 @@ export const App: React.FC = () => {
     rawText: string;
   } | null>(null);
 
-  const [activeSummary, setActiveSummary] = useState<SummaryData | null>(null);
   const [activeQuiz, setActiveQuiz] = useState<QuizData | null>(null);
-  const [activeFlashcards, setActiveFlashcards] = useState<Flashcard[]>([]);
   const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'summarized-quiz' | 'summary' | 'quiz' | 'flashcards' | 'assistant'>('summarized-quiz');
+  const [activeTab, setActiveTab] = useState<'quiz' | 'assistant'>('quiz');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [selectedCount, setSelectedCount] = useState<number>(10);
+  const [selectedCount, setSelectedCount] = useState<number>(25);
   const [seekTime, setSeekTime] = useState<number | null>(null);
 
   // Loading States
@@ -63,7 +66,6 @@ export const App: React.FC = () => {
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState<boolean>(false);
   const [isGeneratingPractice, setIsGeneratingPractice] = useState<boolean>(false);
-  const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState<boolean>(false);
   const [isAssistantThinking, setIsAssistantThinking] = useState<boolean>(false);
 
   // Modals
@@ -84,13 +86,28 @@ export const App: React.FC = () => {
     geminiConfigured: false
   });
 
-  // Initialize theme
+  // Apply theme and attach listener for OS preferences changes when in System mode
   useEffect(() => {
-    StorageService.setTheme(theme);
-  }, [theme]);
+    const effective = StorageService.setThemeMode(themeMode);
+    setTheme(effective);
 
-  // Load initial data (health, demos, history)
+    if (themeMode === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleMediaChange = () => {
+        const updated = StorageService.applyTheme('system');
+        setTheme(updated);
+      };
+
+      mediaQuery.addEventListener('change', handleMediaChange);
+      return () => {
+        mediaQuery.removeEventListener('change', handleMediaChange);
+      };
+    }
+  }, [themeMode]);
+
+  // Load initial data (health, demos, history) & purge obsolete cached features
   useEffect(() => {
+    cleanOldFeatureStorage();
     const init = async () => {
       try {
         const health = await ApiService.checkHealth();
@@ -120,19 +137,33 @@ export const App: React.FC = () => {
     init();
   }, []);
 
-  const addToast = (type: 'success' | 'error' | 'info', message: string) => {
-    const id = `toast_${Date.now()}_${Math.random()}`;
-    setToasts(prev => [...prev, { id, type, message }]);
+  const addToast = (type: 'success' | 'error' | 'info', rawMessage: string) => {
+    const message = type === 'error' ? getErrorMessage(rawMessage) : rawMessage;
+    setToasts(prev => {
+      // De-duplicate: show each failure once; ignore if identical message already shown
+      if (prev.some(t => t.message === message && t.type === type)) {
+        return prev;
+      }
+      const id = `toast_${Date.now()}_${Math.random()}`;
+      return [...prev, { id, type, message }];
+    });
   };
 
   const dismissToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
+  const handleSelectThemeMode = (mode: 'light' | 'dark' | 'system') => {
+    setThemeMode(mode);
   };
+
+  const toggleTheme = () => {
+    const nextMode: 'light' | 'dark' | 'system' =
+      themeMode === 'light' ? 'dark' : themeMode === 'dark' ? 'system' : 'light';
+    setThemeMode(nextMode);
+  };
+
+  // ===================== VIDEO PROCESSING WORKFLOW =====================
 
   // ===================== VIDEO PROCESSING WORKFLOW =====================
 
@@ -144,10 +175,50 @@ export const App: React.FC = () => {
     const diff = options?.difficulty || selectedDifficulty;
     const cnt = options?.count || selectedCount;
 
+    // 1. Phase 2: Cancel any in-flight requests from prior submissions immediately
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    // 2. Parse canonical videoId and create fresh analysisSessionId
+    const canonicalVideoId = VideoIdentity.parseCanonicalVideoId(url) || 'video';
+    const newSessionId = VideoIdentity.createSessionId();
+
+    currentSessionRef.current = {
+      analysisSessionId: newSessionId,
+      videoId: canonicalVideoId,
+      url
+    };
+
+    // 3. Phase 2 Rule: The moment a new URL is submitted, clear all previous state
+    setActiveVideo(null);
+    setActiveQuiz(null);
+    setAssistantMessages([]);
+    StorageService.clearQuizSessions(canonicalVideoId, newSessionId);
+
     setIsLoading(true);
-    setLoadingStep('Reading available lesson content...');
+    setLoadingStep('Fetching captions & transcript...');
     try {
-      const processRes = await ApiService.processVideo({ url });
+      const processRes = await ApiService.processVideo({
+        url,
+        language: lang,
+        analysisSessionId: newSessionId,
+        signal: controller.signal
+      });
+
+      // Verification before applying response
+      if (
+        controller.signal.aborted ||
+        currentSessionRef.current?.analysisSessionId !== newSessionId ||
+        currentSessionRef.current?.videoId !== canonicalVideoId
+      ) {
+        console.warn(`[SessionIsolation] Discarding stale transcript for ${canonicalVideoId}`);
+        setDiscardedCount(prev => prev + 1);
+        setLastDiscardedReason(`Stale transcript response discarded for ${canonicalVideoId}`);
+        return;
+      }
 
       setActiveVideo({
         metadata: processRes.metadata,
@@ -155,73 +226,87 @@ export const App: React.FC = () => {
         rawText: processRes.rawText
       });
 
-      // Step 1: Generate Complete Summary & Notes directly from link
-      setLoadingStep('Understanding lesson concepts & core takeaways...');
-      const summary = await ApiService.generateSummary({
-        videoId: processRes.metadata.id,
-        videoUrl: processRes.metadata.url,
-        title: processRes.metadata.title,
-        transcript: processRes.transcript,
-        language: lang
-      });
-      setActiveSummary(summary);
-
-      // Step 2: Concept Analysis & Multilingual Exam Quiz
-      setLoadingStep('Analyzing knowledge map & generating exam-oriented quiz...');
+      // Concept Analysis & Exam Quiz
+      setLoadingStep(`Analyzing concepts & generating ${cnt}-question quiz...`);
       let quizData: QuizData | null = null;
       try {
         quizData = await ApiService.generateQuiz({
-          videoId: processRes.metadata.id,
+          videoId: canonicalVideoId,
           videoUrl: processRes.metadata.url,
           title: processRes.metadata.title,
           transcript: processRes.transcript,
           difficulty: diff,
           count: cnt,
-          language: lang
+          language: lang,
+          analysisSessionId: newSessionId,
+          signal: controller.signal
         });
-        setActiveQuiz(quizData);
-      } catch (quizErr) {
-        console.warn('Initial concept quiz generation warning:', quizErr);
-      }
 
-      // Step 3: Generate Flashcards
-      try {
-        const flashcards = await ApiService.generateFlashcards({
-          videoId: processRes.metadata.id,
-          title: processRes.metadata.title,
-          transcript: processRes.transcript,
-          count: 6
-        });
-        setActiveFlashcards(flashcards);
-      } catch {
-        // Non-blocking
+        // Verification before applying quiz response
+        if (
+          controller.signal.aborted ||
+          currentSessionRef.current?.analysisSessionId !== newSessionId ||
+          currentSessionRef.current?.videoId !== canonicalVideoId
+        ) {
+          console.warn(`[SessionIsolation] Discarding stale quiz for ${canonicalVideoId}`);
+          setDiscardedCount(prev => prev + 1);
+          setLastDiscardedReason(`Stale quiz response discarded for session ${newSessionId}`);
+          return;
+        }
+
+        StorageService.saveQuizSession(canonicalVideoId, newSessionId, quizData);
+        setActiveQuiz(quizData);
+      } catch (quizErr: any) {
+        if (controller.signal.aborted) return;
+        console.warn('Initial concept quiz generation warning:', quizErr);
+        addToast('error', 'Unable to analyze this video. Please try again.');
+        setActiveQuiz(null);
+        return;
       }
 
       setAssistantMessages([]);
-      setActiveTab('summarized-quiz');
+      setActiveTab('quiz');
 
       // Auto-save to history
       const historyItem: HistoryItem = {
-        id: `hist_${processRes.metadata.id}_${Date.now()}`,
-        videoId: processRes.metadata.id,
+        id: `hist_${canonicalVideoId}_${Date.now()}`,
+        videoId: canonicalVideoId,
         url: processRes.metadata.url,
         title: processRes.metadata.title,
         author: processRes.metadata.author,
         thumbnailUrl: processRes.metadata.thumbnailUrl,
         createdAt: new Date().toISOString(),
-        summary,
         quiz: quizData || undefined
       };
       await ApiService.saveHistory(historyItem);
       setHistory(prev => [historyItem, ...prev.filter(h => h.videoId !== historyItem.videoId)]);
 
-      addToast('success', 'Concept-based exam quiz is ready!');
+      if (quizData) {
+        addToast('success', `${cnt}-Question exam quiz is ready!`);
+      }
     } catch (err: any) {
+      if (controller.signal.aborted) {
+        return;
+      }
       console.error('Processing error:', err);
-      addToast('error', err.message || 'Failed to process YouTube link.');
+      // Zero reuse of previous video's transcript, concepts, questions on failure
+      setActiveVideo(null);
+      setActiveQuiz(null);
+      const friendlyMsg = err.needsManualTranscript || err.code === 'NO_CAPTIONS_AVAILABLE'
+        ? getErrorMessage(err)
+        : 'Unable to analyze this video. Please try again.';
+      addToast('error', friendlyMsg);
+
+      if (err.needsManualTranscript || err.code === 'NO_CAPTIONS_AVAILABLE' || friendlyMsg.includes('paste a transcript')) {
+        setManualTranscriptTitle(err.metadata?.title || '');
+        setManualTranscriptError(friendlyMsg);
+        setIsManualTranscriptOpen(true);
+      }
     } finally {
-      setIsLoading(false);
-      setLoadingStep('');
+      if (currentSessionRef.current?.analysisSessionId === newSessionId) {
+        setIsLoading(false);
+        setLoadingStep('');
+      }
     }
   };
 
@@ -233,10 +318,43 @@ export const App: React.FC = () => {
     const diff = options?.difficulty || selectedDifficulty;
     const cnt = options?.count || selectedCount;
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const canonicalVideoId = demoId;
+    const newSessionId = VideoIdentity.createSessionId();
+
+    currentSessionRef.current = {
+      analysisSessionId: newSessionId,
+      videoId: canonicalVideoId
+    };
+
+    setActiveVideo(null);
+    setActiveQuiz(null);
+    setAssistantMessages([]);
+    StorageService.clearQuizSessions(canonicalVideoId, newSessionId);
+
     setIsLoading(true);
     setLoadingStep('Reading available lesson content...');
     try {
-      const processRes = await ApiService.processVideo({ demoId });
+      const processRes = await ApiService.processVideo({
+        demoId,
+        analysisSessionId: newSessionId,
+        signal: controller.signal
+      });
+
+      if (
+        controller.signal.aborted ||
+        currentSessionRef.current?.analysisSessionId !== newSessionId ||
+        currentSessionRef.current?.videoId !== canonicalVideoId
+      ) {
+        setDiscardedCount(prev => prev + 1);
+        setLastDiscardedReason(`Stale demo video response discarded for ${demoId}`);
+        return;
+      }
 
       setActiveVideo({
         metadata: processRes.metadata,
@@ -244,57 +362,91 @@ export const App: React.FC = () => {
         rawText: processRes.rawText
       });
 
-      setLoadingStep('Understanding lesson concepts & core takeaways...');
-      const summary = await ApiService.generateSummary({
-        videoId: demoId,
-        title: processRes.metadata.title,
-        transcript: processRes.transcript,
-        language: lang
-      });
-      setActiveSummary(summary);
-
-      setLoadingStep('Analyzing knowledge map & generating exam-oriented quiz...');
+      setLoadingStep('Analyzing knowledge map & generating 25-question exam quiz...');
       const quiz = await ApiService.generateQuiz({
         videoId: demoId,
         title: processRes.metadata.title,
         transcript: processRes.transcript,
         difficulty: diff,
         count: cnt,
-        language: lang
+        language: lang,
+        analysisSessionId: newSessionId,
+        signal: controller.signal
       });
+
+      if (
+        controller.signal.aborted ||
+        currentSessionRef.current?.analysisSessionId !== newSessionId ||
+        currentSessionRef.current?.videoId !== canonicalVideoId
+      ) {
+        setDiscardedCount(prev => prev + 1);
+        setLastDiscardedReason(`Stale demo quiz response discarded for ${demoId}`);
+        return;
+      }
+
+      StorageService.saveQuizSession(canonicalVideoId, newSessionId, quiz);
       setActiveQuiz(quiz);
 
-      const flashcards = await ApiService.generateFlashcards({
-        videoId: demoId,
-        title: processRes.metadata.title,
-        transcript: processRes.transcript,
-        count: 4
-      });
-      setActiveFlashcards(flashcards);
-
       setAssistantMessages([]);
-      setActiveTab('summarized-quiz');
-      addToast('success', `Loaded ${processRes.metadata.title} concept quiz!`);
+      setActiveTab('quiz');
+      addToast('success', `Loaded ${processRes.metadata.title} exam quiz!`);
     } catch (err: any) {
-      addToast('error', err.message || 'Failed to load demo video.');
+      if (controller.signal.aborted) return;
+      setActiveVideo(null);
+      setActiveQuiz(null);
+      addToast('error', 'Unable to analyze this video. Please try again.');
     } finally {
-      setIsLoading(false);
-      setLoadingStep('');
+      if (currentSessionRef.current?.analysisSessionId === newSessionId) {
+        setIsLoading(false);
+        setLoadingStep('');
+      }
     }
   };
 
   const handleManualTranscriptSubmit = async (title: string, transcriptText: string) => {
     setIsManualTranscriptOpen(false);
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const canonicalVideoId = `manual_${Date.now()}`;
+    const newSessionId = VideoIdentity.createSessionId();
+
+    currentSessionRef.current = {
+      analysisSessionId: newSessionId,
+      videoId: canonicalVideoId
+    };
+
+    setActiveVideo(null);
+    setActiveQuiz(null);
+    setAssistantMessages([]);
+    StorageService.clearQuizSessions(canonicalVideoId, newSessionId);
+
     setIsLoading(true);
     setLoadingStep('Processing custom transcript...');
 
     try {
       const processRes = await ApiService.processVideo({
-        manualTranscript: transcriptText
+        manualTranscript: transcriptText,
+        analysisSessionId: newSessionId,
+        signal: controller.signal
       });
+
+      if (
+        controller.signal.aborted ||
+        currentSessionRef.current?.analysisSessionId !== newSessionId ||
+        currentSessionRef.current?.videoId !== canonicalVideoId
+      ) {
+        setDiscardedCount(prev => prev + 1);
+        return;
+      }
 
       const customMetadata: VideoMetadata = {
         ...processRes.metadata,
+        id: canonicalVideoId,
         title: title || 'Custom Lecture Notes',
         author: 'Manual Transcript',
         thumbnailUrl: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=800&auto=format&fit=crop&q=80'
@@ -306,22 +458,43 @@ export const App: React.FC = () => {
         rawText: transcriptText
       });
 
-      const summary = await ApiService.generateSummary({
-        videoId: customMetadata.id,
+      setLoadingStep('Analyzing concepts & generating 25-question exam quiz...');
+      const quiz = await ApiService.generateQuiz({
+        videoId: canonicalVideoId,
         title: customMetadata.title,
         transcript: processRes.transcript,
-        language: selectedLanguage
+        difficulty: selectedDifficulty,
+        count: selectedCount,
+        language: selectedLanguage,
+        analysisSessionId: newSessionId,
+        signal: controller.signal
       });
-      setActiveSummary(summary);
 
-      setActiveQuiz(null);
-      setActiveTab('summary');
-      addToast('success', 'Study materials generated from manual transcript!');
+      if (
+        controller.signal.aborted ||
+        currentSessionRef.current?.analysisSessionId !== newSessionId ||
+        currentSessionRef.current?.videoId !== canonicalVideoId
+      ) {
+        setDiscardedCount(prev => prev + 1);
+        return;
+      }
+
+      StorageService.saveQuizSession(canonicalVideoId, newSessionId, quiz);
+      setActiveQuiz(quiz);
+
+      setAssistantMessages([]);
+      setActiveTab('quiz');
+      addToast('success', '25-Question exam quiz generated from custom transcript!');
     } catch (err: any) {
-      addToast('error', err.message || 'Failed to process manual transcript.');
+      if (controller.signal.aborted) return;
+      setActiveVideo(null);
+      setActiveQuiz(null);
+      addToast('error', 'Unable to analyze this video. Please try again.');
     } finally {
-      setIsLoading(false);
-      setLoadingStep('');
+      if (currentSessionRef.current?.analysisSessionId === newSessionId) {
+        setIsLoading(false);
+        setLoadingStep('');
+      }
     }
   };
 
@@ -329,32 +502,35 @@ export const App: React.FC = () => {
 
   const handleLanguageChange = async (newLang: string) => {
     setSelectedLanguage(newLang);
-    if (!activeVideo || !activeSummary) return;
+    if (!activeVideo) return;
+
+    const newSessionId = VideoIdentity.createSessionId();
+    const vid = activeVideo.metadata.id;
+    currentSessionRef.current = {
+      analysisSessionId: newSessionId,
+      videoId: vid
+    };
 
     setIsRegenerating(true);
     try {
-      const [summary, quiz] = await Promise.all([
-        ApiService.generateSummary({
-          videoId: activeVideo.metadata.id,
-          title: activeVideo.metadata.title,
-          transcript: activeVideo.transcript,
-          language: newLang
-        }),
-        ApiService.generateQuiz({
-          videoId: activeVideo.metadata.id,
-          videoUrl: activeVideo.metadata.url,
-          title: activeVideo.metadata.title,
-          transcript: activeVideo.transcript,
-          difficulty: selectedDifficulty,
-          count: selectedCount,
-          language: newLang
-        })
-      ]);
-      setActiveSummary(summary);
+      const quiz = await ApiService.generateQuiz({
+        videoId: vid,
+        videoUrl: activeVideo.metadata.url,
+        title: activeVideo.metadata.title,
+        transcript: activeVideo.transcript,
+        difficulty: selectedDifficulty,
+        count: selectedCount,
+        language: newLang,
+        analysisSessionId: newSessionId
+      });
+
+      if (currentSessionRef.current?.analysisSessionId !== newSessionId) return;
+
+      StorageService.saveQuizSession(vid, newSessionId, quiz);
       setActiveQuiz(quiz);
-      addToast('success', `Adapted entire lesson and quiz into selected language!`);
+      addToast('success', `Adapted 25-question quiz into selected language!`);
     } catch (err: any) {
-      addToast('error', err.message || 'Failed to adapt language.');
+      addToast('error', 'Unable to analyze this video. Please try again.');
     } finally {
       setIsRegenerating(false);
     }
@@ -362,19 +538,33 @@ export const App: React.FC = () => {
 
   const handleRegenerate = async () => {
     if (!activeVideo) return;
+    const newSessionId = VideoIdentity.createSessionId();
+    const vid = activeVideo.metadata.id;
+    currentSessionRef.current = {
+      analysisSessionId: newSessionId,
+      videoId: vid
+    };
+
     setIsRegenerating(true);
     try {
-      const summary = await ApiService.generateSummary({
-        videoId: activeVideo.metadata.id,
+      const quiz = await ApiService.generateQuiz({
+        videoId: vid,
         videoUrl: activeVideo.metadata.url,
         title: activeVideo.metadata.title,
         transcript: activeVideo.transcript,
-        language: selectedLanguage
+        difficulty: selectedDifficulty,
+        count: selectedCount,
+        language: selectedLanguage,
+        analysisSessionId: newSessionId
       });
-      setActiveSummary(summary);
-      addToast('success', 'Study notes refreshed!');
+
+      if (currentSessionRef.current?.analysisSessionId !== newSessionId) return;
+
+      StorageService.saveQuizSession(vid, newSessionId, quiz);
+      setActiveQuiz(quiz);
+      addToast('success', '25-Question exam quiz regenerated!');
     } catch (err: any) {
-      addToast('error', err.message || 'Failed to regenerate.');
+      addToast('error', 'Unable to analyze this video. Please try again.');
     } finally {
       setIsRegenerating(false);
     }
@@ -382,23 +572,36 @@ export const App: React.FC = () => {
 
   // ===================== QUIZ ACTIONS =====================
 
-  const handleGenerateQuiz = async (difficulty: 'easy' | 'medium' | 'hard', count: number) => {
-    if (!activeVideo) return;
+  const handleGenerateQuiz = async (difficulty: 'easy' | 'medium' | 'hard' = 'medium', count: number = 25) => {
+    if (!activeVideo || isGeneratingQuiz) return;
+    const newSessionId = VideoIdentity.createSessionId();
+    const vid = activeVideo.metadata.id;
+    currentSessionRef.current = {
+      analysisSessionId: newSessionId,
+      videoId: vid
+    };
+
     setIsGeneratingQuiz(true);
     try {
       const quiz = await ApiService.generateQuiz({
-        videoId: activeVideo.metadata.id,
+        videoId: vid,
         videoUrl: activeVideo.metadata.url,
         title: activeVideo.metadata.title,
         transcript: activeVideo.transcript,
         difficulty,
         count,
-        language: selectedLanguage
+        language: selectedLanguage,
+        analysisSessionId: newSessionId
       });
+
+      if (currentSessionRef.current?.analysisSessionId !== newSessionId) return;
+
+      StorageService.saveQuizSession(vid, newSessionId, quiz);
       setActiveQuiz(quiz);
       addToast('success', `Created ${quiz.questions.length} ${difficulty} exam questions!`);
-    } catch (err: any) {
-      addToast('error', err.message || 'Failed to generate quiz.');
+    } catch (err: unknown) {
+      console.error('Quiz generation error:', err);
+      addToast('error', 'Unable to analyze this video. Please try again.');
     } finally {
       setIsGeneratingQuiz(false);
     }
@@ -430,27 +633,6 @@ export const App: React.FC = () => {
       addToast('error', err.message || 'Failed to generate targeted practice questions.');
     } finally {
       setIsGeneratingPractice(false);
-    }
-  };
-
-  // ===================== FLASHCARD ACTIONS =====================
-
-  const handleGenerateFlashcards = async (count: number) => {
-    if (!activeVideo) return;
-    setIsGeneratingFlashcards(true);
-    try {
-      const flashcards = await ApiService.generateFlashcards({
-        videoId: activeVideo.metadata.id,
-        title: activeVideo.metadata.title,
-        transcript: activeVideo.transcript,
-        count
-      });
-      setActiveFlashcards(flashcards);
-      addToast('success', `Created ${flashcards.length} active recall cards!`);
-    } catch (err: any) {
-      addToast('error', err.message || 'Failed to generate flashcards.');
-    } finally {
-      setIsGeneratingFlashcards(false);
     }
   };
 
@@ -496,39 +678,6 @@ export const App: React.FC = () => {
 
   // ===================== EXPORT UTILITIES =====================
 
-  const handleCopyNotes = () => {
-    if (!activeSummary) return;
-    const textToCopy = `${activeSummary.shortSummary}\n\n${activeSummary.studyNotes}`;
-    navigator.clipboard.writeText(textToCopy);
-    addToast('success', 'Summary copied to clipboard!');
-  };
-
-  const handleDownloadMarkdown = () => {
-    if (!activeVideo || !activeSummary) return;
-    const content = `# Study Notes: ${activeVideo.metadata.title}\nSource: ${activeVideo.metadata.url}\n\n## Overview\n${activeSummary.shortSummary}\n\n## Detailed Summary\n${activeSummary.detailedSummary}\n\n${activeSummary.studyNotes}`;
-    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${activeVideo.metadata.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_notes.md`;
-    link.click();
-    URL.revokeObjectURL(url);
-    addToast('success', 'Markdown file downloaded!');
-  };
-
-  const handleDownloadText = () => {
-    if (!activeVideo || !activeSummary) return;
-    const content = `TITLE: ${activeVideo.metadata.title}\nURL: ${activeVideo.metadata.url}\n\n--- SUMMARY ---\n${activeSummary.shortSummary}\n\n--- KEY POINTS ---\n${activeSummary.keyPoints.map((k, i) => `${i + 1}. ${k}`).join('\n')}\n\n--- STUDY NOTES ---\n${activeSummary.studyNotes}`;
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${activeVideo.metadata.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_notes.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-    addToast('success', 'Plain text file downloaded!');
-  };
-
   const handleExportQuiz = () => {
     if (!activeQuiz) return;
     const text = activeQuiz.questions
@@ -550,22 +699,6 @@ export const App: React.FC = () => {
     addToast('success', 'Quiz exported successfully!');
   };
 
-  const handleExportFlashcards = () => {
-    if (activeFlashcards.length === 0) return;
-    const text = activeFlashcards
-      .map((fc, i) => `Card ${i + 1} [${fc.category || 'General'}]\nFRONT: ${fc.front}\nBACK: ${fc.back}\n`)
-      .join('\n---\n\n');
-
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `flashcards_${Date.now()}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-    addToast('success', 'Flashcards exported successfully!');
-  };
-
   // ===================== HISTORY MANAGEMENT =====================
 
   const handleSelectHistoryItem = (item: HistoryItem) => {
@@ -582,11 +715,9 @@ export const App: React.FC = () => {
       rawText: ''
     });
 
-    if (item.summary) setActiveSummary(item.summary);
     if (item.quiz) setActiveQuiz(item.quiz);
-    if (item.flashcards) setActiveFlashcards(item.flashcards);
     setAssistantMessages([]);
-    setActiveTab('summarized-quiz');
+    setActiveTab('quiz');
     addToast('info', `Opened "${item.title}"`);
   };
 
@@ -603,7 +734,7 @@ export const App: React.FC = () => {
   };
 
   const handleSaveToHistoryExplicit = async () => {
-    if (!activeVideo || !activeSummary) return;
+    if (!activeVideo) return;
     const historyItem: HistoryItem = {
       id: `hist_${activeVideo.metadata.id}_${Date.now()}`,
       videoId: activeVideo.metadata.id,
@@ -612,9 +743,7 @@ export const App: React.FC = () => {
       author: activeVideo.metadata.author,
       thumbnailUrl: activeVideo.metadata.thumbnailUrl,
       createdAt: new Date().toISOString(),
-      summary: activeSummary,
-      quiz: activeQuiz || undefined,
-      flashcards: activeFlashcards.length > 0 ? activeFlashcards : undefined
+      quiz: activeQuiz || undefined
     };
 
     await ApiService.saveHistory(historyItem);
@@ -632,19 +761,67 @@ export const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Hard filter of visible tabs
+  const availableTabs = [
+    {
+      id: 'quiz' as const,
+      label: '25-Question Exam Quiz',
+      icon: HelpCircle,
+      badge: activeQuiz ? `${activeQuiz.questions.length} Qs` : undefined
+    },
+    {
+      id: 'assistant' as const,
+      label: 'AI Tutor',
+      icon: Brain,
+      badge: undefined
+    }
+  ].filter(tab => !isFeatureDisabled(tab.id) && !isFeatureDisabled(tab.label));
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="min-h-screen flex flex-col text-[#17172D] transition-colors relative">
       <Header
         theme={theme}
+        themeMode={themeMode}
+        onSelectThemeMode={handleSelectThemeMode}
         onToggleTheme={toggleTheme}
         onOpenHistory={() => setIsHistoryOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onGoHome={() => setActiveVideo(null)}
         historyCount={history.length}
         hasActiveVideo={Boolean(activeVideo)}
+        activeSection={
+          !activeVideo
+            ? 'home'
+            : activeTab === 'assistant'
+            ? 'ai-tutor'
+            : 'practice'
+        }
+        onNavigateSection={section => {
+          if (section === 'home') {
+            setActiveVideo(null);
+          } else if (section === 'ai-tutor') {
+            if (activeVideo) {
+              setActiveTab('assistant');
+            } else if (demos.length > 0) {
+              handleSelectDemo(demos[0].id);
+              setActiveTab('assistant');
+            }
+          } else if (section === 'practice') {
+            if (activeVideo) {
+              setActiveTab('quiz');
+            } else if (demos.length > 0) {
+              handleSelectDemo(demos[0].id);
+              setActiveTab('quiz');
+            }
+          } else if (section === 'my-learning') {
+            setIsHistoryOpen(true);
+          } else if (section === 'profile') {
+            setIsSettingsOpen(true);
+          }
+        }}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {!activeVideo ? (
           <HeroInput
             onProcessUrl={handleProcessUrl}
@@ -674,110 +851,34 @@ export const App: React.FC = () => {
               seekTime={seekTime}
             />
 
-            {/* Navigation Tabs Bar */}
-            <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2 sm:gap-4 overflow-x-auto">
-              <button
-                onClick={() => setActiveTab('summarized-quiz')}
-                className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs sm:text-sm border-b-2 transition-all whitespace-nowrap ${
-                  activeTab === 'summarized-quiz'
-                    ? 'border-brand-600 text-brand-600 dark:text-brand-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <Sparkles className="w-4 h-4 text-brand-500" />
-                <span>Summarized Quiz</span>
-                {activeQuiz && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300">
-                    {activeQuiz.questions.length} Qs
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setActiveTab('summary')}
-                className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs sm:text-sm border-b-2 transition-all whitespace-nowrap ${
-                  activeTab === 'summary'
-                    ? 'border-brand-600 text-brand-600 dark:text-brand-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>Full Notes & Summary</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('quiz')}
-                className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs sm:text-sm border-b-2 transition-all whitespace-nowrap ${
-                  activeTab === 'quiz'
-                    ? 'border-brand-600 text-brand-600 dark:text-brand-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <HelpCircle className="w-4 h-4" />
-                <span>Quiz Only</span>
-                {activeQuiz && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300">
-                    {activeQuiz.questions.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setActiveTab('flashcards')}
-                className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs sm:text-sm border-b-2 transition-all whitespace-nowrap ${
-                  activeTab === 'flashcards'
-                    ? 'border-brand-600 text-brand-600 dark:text-brand-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                <span>Flashcards</span>
-                {activeFlashcards.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300">
-                    {activeFlashcards.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setActiveTab('assistant')}
-                className={`flex items-center gap-2 py-3 px-4 font-semibold text-xs sm:text-sm border-b-2 transition-all whitespace-nowrap ${
-                  activeTab === 'assistant'
-                    ? 'border-brand-600 text-brand-600 dark:text-brand-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                }`}
-              >
-                <Brain className="w-4 h-4" />
-                <span>AI Tutor</span>
-              </button>
+            {/* Navigation Tabs Bar — Spatial Floating Glass Pill Strip */}
+            <div className="sticky top-20 z-30 flex items-center justify-start sm:justify-center p-1.5 rounded-full bg-white/85 backdrop-blur-xl border border-[#DFE1F0] shadow-resting gap-1 sm:gap-2 overflow-x-auto max-w-fit mx-auto transition-all">
+              {availableTabs.map(tab => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 py-2 px-4 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap active:scale-95 ${
+                      isActive
+                        ? 'bg-[#EEEEFF] text-[#4938C8] shadow-xs'
+                        : 'text-[#666A83] hover:text-[#4938C8] hover:bg-[#EEEEFF]/60'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-[#5B46E8]' : ''}`} />
+                    <span>{tab.label}</span>
+                    {tab.badge && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#4938C8] shadow-xs">
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Active Tab Views */}
-            {activeTab === 'summarized-quiz' && activeSummary && (
-              <SummarizedQuizTab
-                summary={activeSummary}
-                quiz={activeQuiz}
-                onGenerateQuiz={handleGenerateQuiz}
-                isGenerating={isGeneratingQuiz}
-                onExportQuiz={handleExportQuiz}
-                onViewFullSummary={() => setActiveTab('summary')}
-                videoTitle={activeVideo.metadata.title}
-                onSeek={handleSeek}
-                onGeneratePractice={handleGeneratePractice}
-                isGeneratingPractice={isGeneratingPractice}
-              />
-            )}
-
-            {activeTab === 'summary' && activeSummary && (
-              <SummaryTab
-                summary={activeSummary}
-                onSeek={handleSeek}
-                onCopyNotes={handleCopyNotes}
-                onDownloadMarkdown={handleDownloadMarkdown}
-                onDownloadText={handleDownloadText}
-              />
-            )}
-
+            {/* Active Tab Views — Strictly Filtered */}
             {activeTab === 'quiz' && (
               <QuizTab
                 quiz={activeQuiz}
@@ -787,15 +888,6 @@ export const App: React.FC = () => {
                 onSeek={handleSeek}
                 onGeneratePractice={handleGeneratePractice}
                 isGeneratingPractice={isGeneratingPractice}
-              />
-            )}
-
-            {activeTab === 'flashcards' && (
-              <FlashcardsTab
-                flashcards={activeFlashcards}
-                onGenerateFlashcards={handleGenerateFlashcards}
-                isGenerating={isGeneratingFlashcards}
-                onExport={handleExportFlashcards}
               />
             )}
 
@@ -837,6 +929,17 @@ export const App: React.FC = () => {
         onSubmit={handleManualTranscriptSubmit}
         initialTitle={manualTranscriptTitle}
         initialError={manualTranscriptError}
+      />
+
+      <DevDebugPanel
+        analysisSessionId={currentSessionRef.current?.analysisSessionId}
+        videoId={currentSessionRef.current?.videoId}
+        transcriptHash={activeQuiz?.transcriptHash}
+        conceptCount={activeQuiz?.topicCoverageReport?.coveredConcepts?.length || 0}
+        questionCount={activeQuiz?.questions?.length || 0}
+        questions={activeQuiz?.questions || []}
+        discardedCount={discardedCount}
+        lastDiscardedReason={lastDiscardedReason}
       />
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />

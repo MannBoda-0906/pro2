@@ -60,8 +60,28 @@ app.use(errorHandler);
 
 // Server startup if run directly
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(config.port, () => {
-    console.log(`🚀 StudyTube AI Server running on http://localhost:${config.port}`);
-    console.log(`🤖 AI Provider: Google Gemini (${config.geminiModel}) + Adaptive Local Synthesizer`);
+  const server = app.listen(config.port, '0.0.0.0', () => {
+    console.log(`\n==================================================`);
+    console.log(`🚀 StudyTube / Lumora AI Backend running!`);
+    console.log(`   Local URL:    http://localhost:${config.port}`);
+    console.log(`   Health Check: http://localhost:${config.port}/api/health`);
+    console.log(`   AI Model:     ${config.geminiModel}`);
+    if (!config.geminiApiKey || config.geminiApiKey.startsWith('your_')) {
+      console.log(`   AI Status:    ⚠️  GEMINI_API_KEY not configured (fallback mode active)`);
+    } else {
+      console.log(`   AI Status:    ✅  GEMINI_API_KEY active`);
+    }
+    console.log(`==================================================\n`);
+  });
+
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n❌ Port ${config.port} is already in use by another process.`);
+      console.error(`   Please terminate the other process or change PORT in .env.\n`);
+      process.exit(1);
+    } else {
+      console.error('❌ Server startup error:', err);
+    }
   });
 }
+

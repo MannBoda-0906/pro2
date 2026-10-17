@@ -1,0 +1,1092 @@
+[
+  {
+    "id": "att_1792226260563_phebo",
+    "timestamp": "2026-10-17T08:37:40.563Z",
+    "quizId": "quiz_demo-mit-cs_1792226260528",
+    "videoId": "demo-mit-cs",
+    "userAnswers": {
+      "q_1_1792226256833": "15 units"
+    },
+    "result": {
+      "total": 10,
+      "correct": 1,
+      "incorrect": 9,
+      "percentage": 10,
+      "questionResults": [
+        {
+          "questionId": "q_1_1792226256833",
+          "slotIndex": 1,
+          "question": "In a quantitative test of MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals, variable $A$ is initialized to 5 units and scales by a factor of 3 according to its governing equation. Calculate the resulting value of the dependent parameter.",
+          "format": "numerical",
+          "userAnswer": "15 units",
+          "correctAnswer": "15 units",
+          "isCorrect": true,
+          "resultLocalized": "TRUE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "Initial value A = 5, Scaling factor k = 3",
+              "required": "Resulting parameter value",
+              "relationship": "Result = A * k",
+              "substitution": "5 * 3",
+              "calculation": "5 * 3 = 15",
+              "finalAnswer": "15 units",
+              "unit": "units"
+            },
+            "fullText": "Given: A = 5, k = 3\nFormula: Result = A * k\nCalculation: 5 * 3 = 15\nFinal Answer: 15 units"
+          },
+          "explanation": "Calculated from verified problem-solving methodology for MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals.",
+          "conceptTested": "MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals",
+          "conceptId": "C1"
+        },
+        {
+          "questionId": "q_2_1792226257243",
+          "slotIndex": 2,
+          "question": "In a quantitative test of MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals, variable $A$ is initialized to 6 units and scales by a factor of 4 according to its governing equation. Calculate the resulting value of the dependent parameter.",
+          "format": "numerical",
+          "userAnswer": "Not answered",
+          "correctAnswer": "24 units",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "Initial value A = 6, Scaling factor k = 4",
+              "required": "Resulting parameter value",
+              "relationship": "Result = A * k",
+              "substitution": "6 * 4",
+              "calculation": "6 * 4 = 24",
+              "finalAnswer": "24 units",
+              "unit": "units"
+            },
+            "fullText": "Given: A = 6, k = 4\nFormula: Result = A * k\nCalculation: 6 * 4 = 24\nFinal Answer: 24 units"
+          },
+          "explanation": "Calculated from verified problem-solving methodology for MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals.",
+          "conceptTested": "MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals",
+          "conceptId": "C1"
+        },
+        {
+          "questionId": "q_3_1792226257654",
+          "slotIndex": 3,
+          "question": "In a quantitative test of MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals, variable $A$ is initialized to 7 units and scales by a factor of 2 according to its governing equation. Calculate the resulting value of the dependent parameter.",
+          "format": "numerical",
+          "userAnswer": "Not answered",
+          "correctAnswer": "14 units",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "Initial value A = 7, Scaling factor k = 2",
+              "required": "Resulting parameter value",
+              "relationship": "Result = A * k",
+              "substitution": "7 * 2",
+              "calculation": "7 * 2 = 14",
+              "finalAnswer": "14 units",
+              "unit": "units"
+            },
+            "fullText": "Given: A = 7, k = 2\nFormula: Result = A * k\nCalculation: 7 * 2 = 14\nFinal Answer: 14 units"
+          },
+          "explanation": "Calculated from verified problem-solving methodology for MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals.",
+          "conceptTested": "MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals",
+          "conceptId": "C1"
+        },
+        {
+          "questionId": "q_4_1792226258054",
+          "slotIndex": 4,
+          "question": "In a quantitative test of MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals, variable $A$ is initialized to 8 units and scales by a factor of 3 according to its governing equation. Calculate the resulting value of the dependent parameter.",
+          "format": "numerical",
+          "userAnswer": "Not answered",
+          "correctAnswer": "24 units",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "Initial value A = 8, Scaling factor k = 3",
+              "required": "Resulting parameter value",
+              "relationship": "Result = A * k",
+              "substitution": "8 * 3",
+              "calculation": "8 * 3 = 24",
+              "finalAnswer": "24 units",
+              "unit": "units"
+            },
+            "fullText": "Given: A = 8, k = 3\nFormula: Result = A * k\nCalculation: 8 * 3 = 24\nFinal Answer: 24 units"
+          },
+          "explanation": "Calculated from verified problem-solving methodology for MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals.",
+          "conceptTested": "MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals",
+          "conceptId": "C1"
+        },
+        {
+          "questionId": "q_5_1792226258438",
+          "slotIndex": 5,
+          "question": "In a quantitative test of MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms, variable $A$ is initialized to 9 units and scales by a factor of 4 according to its governing equation. Calculate the resulting value of the dependent parameter.",
+          "format": "numerical",
+          "userAnswer": "Not answered",
+          "correctAnswer": "36 units",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "Initial value A = 9, Scaling factor k = 4",
+              "required": "Resulting parameter value",
+              "relationship": "Result = A * k",
+              "substitution": "9 * 4",
+              "calculation": "9 * 4 = 36",
+              "finalAnswer": "36 units",
+              "unit": "units"
+            },
+            "fullText": "Given: A = 9, k = 4\nFormula: Result = A * k\nCalculation: 9 * 4 = 36\nFinal Answer: 36 units"
+          },
+          "explanation": "Calculated from verified problem-solving methodology for MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms.",
+          "conceptTested": "MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms",
+          "conceptId": "C2"
+        },
+        {
+          "questionId": "q_6_1792226258878",
+          "slotIndex": 6,
+          "question": "In a quantitative test of MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms, variable $A$ is initialized to 4 units and scales by a factor of 2 according to its governing equation. Calculate the resulting value of the dependent parameter.",
+          "format": "numerical",
+          "userAnswer": "Not answered",
+          "correctAnswer": "8 units",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "Initial value A = 4, Scaling factor k = 2",
+              "required": "Resulting parameter value",
+              "relationship": "Result = A * k",
+              "substitution": "4 * 2",
+              "calculation": "4 * 2 = 8",
+              "finalAnswer": "8 units",
+              "unit": "units"
+            },
+            "fullText": "Given: A = 4, k = 2\nFormula: Result = A * k\nCalculation: 4 * 2 = 8\nFinal Answer: 8 units"
+          },
+          "explanation": "Calculated from verified problem-solving methodology for MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms.",
+          "conceptTested": "MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms",
+          "conceptId": "C2"
+        },
+        {
+          "questionId": "q_7_1792226259290",
+          "slotIndex": 7,
+          "question": "In a quantitative test of MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms, variable $A$ is initialized to 5 units and scales by a factor of 3 according to its governing equation. Calculate the resulting value of the dependent parameter.",
+          "format": "numerical",
+          "userAnswer": "Not answered",
+          "correctAnswer": "15 units",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "Initial value A = 5, Scaling factor k = 3",
+              "required": "Resulting parameter value",
+              "relationship": "Result = A * k",
+              "substitution": "5 * 3",
+              "calculation": "5 * 3 = 15",
+              "finalAnswer": "15 units",
+              "unit": "units"
+            },
+            "fullText": "Given: A = 5, k = 3\nFormula: Result = A * k\nCalculation: 5 * 3 = 15\nFinal Answer: 15 units"
+          },
+          "explanation": "Calculated from verified problem-solving methodology for MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms.",
+          "conceptTested": "MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms",
+          "conceptId": "C2"
+        },
+        {
+          "questionId": "q_8_1792226259698",
+          "slotIndex": 8,
+          "question": "Under the governing laws of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving, external operational constraints can be arbitrarily violated without altering system correctness or balance.",
+          "format": "true_false",
+          "userAnswer": "Not answered",
+          "correctAnswer": "False",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "true_false",
+            "trueFalse": {
+              "truthValue": false,
+              "reasoning": "Boundary conditions and governing laws of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving cannot be arbitrarily violated while preserving validity.",
+              "conceptExplanation": "Conceptual evaluation of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving."
+            },
+            "fullText": "Answer: False\nReasoning: Boundary conditions and governing laws of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving cannot be arbitrarily violated while preserving validity."
+          },
+          "explanation": "Boundary conditions and governing laws of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving cannot be arbitrarily violated while preserving validity.",
+          "conceptTested": "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_9_1792226260108",
+          "slotIndex": 9,
+          "question": "In History, the foundational mechanism establishing the operational behavior of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving is known as ________.",
+          "format": "fill_blank",
+          "userAnswer": "Not answered",
+          "correctAnswer": "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "fill_blank",
+            "fillBlank": {
+              "correctTermOrValue": "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving",
+              "explanation": "The core governing principle for this topic is MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving: Formal academic principle of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving.",
+              "acceptedEquivalents": [
+                "mit 6.0001: introduction to computer science and programming in python applications & problem solving",
+                "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving",
+                "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving principle",
+                "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving mechanism"
+              ]
+            },
+            "fullText": "Correct Fill-in: MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving\nExplanation: The core governing principle for this topic is MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving: Formal academic principle of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving."
+          },
+          "explanation": "The core governing principle for this topic is MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving: Formal academic principle of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving.",
+          "conceptTested": "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_10_1792226260528",
+          "slotIndex": 10,
+          "question": "Why is MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving considered an essential concept in History?",
+          "format": "theoretical",
+          "userAnswer": "Not answered",
+          "correctAnswer": "Because it establishes the governing causal relationship: \"Fundamental scientific laws governing MIT 6.0001: Introduction to Computer Scien\"",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "theoretical",
+            "theory": {
+              "concept": "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving",
+              "reasoning": "The core theoretical significance of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving is that Fundamental scientific laws governing MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving..",
+              "correctExplanation": "Validates predictive behavior under MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving."
+            },
+            "fullText": "Correct Option: Because it establishes the governing causal relationship: \"Fundamental scientific laws governing MIT 6.0001: Introduction to Computer Scien\"\nReasoning: The core theoretical significance of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving is that Fundamental scientific laws governing MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving.."
+          },
+          "explanation": "The core theoretical significance of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving is that Fundamental scientific laws governing MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving..",
+          "conceptTested": "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving",
+          "conceptId": "C3"
+        }
+      ],
+      "conceptCoverageTable": [
+        {
+          "conceptId": "C1",
+          "conceptName": "MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals",
+          "questionsCount": 4,
+          "correctCount": 1,
+          "incorrectCount": 3,
+          "percentage": 25
+        },
+        {
+          "conceptId": "C2",
+          "conceptName": "MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms",
+          "questionsCount": 3,
+          "correctCount": 0,
+          "incorrectCount": 3,
+          "percentage": 0
+        },
+        {
+          "conceptId": "C3",
+          "conceptName": "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving",
+          "questionsCount": 3,
+          "correctCount": 0,
+          "incorrectCount": 3,
+          "percentage": 0
+        }
+      ],
+      "strongConcepts": [],
+      "weakConcepts": [
+        {
+          "conceptId": "C1",
+          "conceptName": "MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals",
+          "percentage": 25
+        },
+        {
+          "conceptId": "C2",
+          "conceptName": "MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms",
+          "percentage": 0
+        },
+        {
+          "conceptId": "C3",
+          "conceptName": "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving",
+          "percentage": 0
+        }
+      ],
+      "recommendedRevision": [
+        {
+          "conceptId": "C1",
+          "conceptName": "MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals",
+          "summary": "Review principle: Core instructional concept of MIT 6.0001: Introduction to Computer Science and Programming in Python Fundamentals taught in the lecture. Common mistake: Calculation errors and variable confusion",
+          "timestampFormatted": "00:10",
+          "timestampSeconds": 10
+        },
+        {
+          "conceptId": "C2",
+          "conceptName": "MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms",
+          "summary": "Review principle: Core instructional concept of MIT 6.0001: Introduction to Computer Science and Programming in Python Mechanisms taught in the lecture. Common mistake: Calculation errors and variable confusion",
+          "timestampFormatted": "00:10",
+          "timestampSeconds": 10
+        },
+        {
+          "conceptId": "C3",
+          "conceptName": "MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving",
+          "summary": "Review principle: Core instructional concept of MIT 6.0001: Introduction to Computer Science and Programming in Python Applications & Problem Solving taught in the lecture. Common mistake: Calculation errors and variable confusion",
+          "timestampFormatted": "00:10",
+          "timestampSeconds": 10
+        }
+      ]
+    }
+  },
+  {
+    "id": "att_1792221981299_xjh3b",
+    "timestamp": "2026-10-17T07:26:21.299Z",
+    "quizId": "quiz_LvDEO27plw0_1792221480477",
+    "videoId": "LvDEO27plw0",
+    "userAnswers": {
+      "q_slot_1_1792221470257": "4.00 A",
+      "q_2": "4 kg",
+      "q_3": "8 kg",
+      "q_4": "6.67 m",
+      "q_5": "4.71 m",
+      "q_6": "8 kg",
+      "q_7": "3.23 m",
+      "q_8": "5.09 m",
+      "q_9": "4 kg",
+      "q_10": "5 m",
+      "q_11": "6.7 m",
+      "q_12": "12 kg",
+      "q_13": "4.08 m",
+      "q_14": "5.33 m",
+      "q_15": "4 kg",
+      "q_16": "2.86 m",
+      "q_17": "7.33 m",
+      "q_18": "4 kg",
+      "q_19": "True",
+      "q_20": "False",
+      "q_21": "True",
+      "q_22": "hdshs",
+      "q_23": "force",
+      "q_24": "1-A, 2-B, 3-C, 4-D"
+    },
+    "result": {
+      "total": 25,
+      "correct": 8,
+      "incorrect": 17,
+      "percentage": 32,
+      "questionResults": [
+        {
+          "questionId": "q_slot_1_1792221470257",
+          "slotIndex": 1,
+          "question": "Two thin conducting wires meet at a junction, each carrying a steady current of 2.00 A toward the junction. The angle between the two incoming wires is 60°. A single outgoing wire carries the total current away from the junction. What is the magnitude of the current in the outgoing wire?",
+          "format": "numerical",
+          "userAnswer": "4.00 A",
+          "correctAnswer": "4.00 A",
+          "isCorrect": true,
+          "resultLocalized": "TRUE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "Current in wire 1, I₁ = 2.00 A; Current in wire 2, I₂ = 2.00 A; Angle between incoming wires, θ = 60°",
+              "required": "Outgoing current, I_out",
+              "relationship": "I_out = I₁ + I₂ (Kirchhoff's Junction Rule / Conservation of Electric Charge; electric current is a scalar quantity and adds algebraically)",
+              "substitution": "I_out = 2.00 A + 2.00 A",
+              "calculation": "I_out = 4.00 A",
+              "finalAnswer": "4.00 A",
+              "unit": "A"
+            },
+            "theory": {
+              "concept": "Scalar Nature of Electric Current and Vector Addition Independence",
+              "reasoning": "Even though electric current has a specified direction of flow along a wire, it does not obey the laws of vector addition (such as the parallelogram law). Current is the rate of flow of charge (a scalar quantity) and obeys Kirchhoff's junction law, which is a statement of conservation of charge.",
+              "correctExplanation": "Because electric current is a scalar quantity, total current at a junction depends purely on algebraic sum and is completely independent of the geometric angle between the conductors. Thus, 2.00 A + 2.00 A = 4.00 A."
+            },
+            "trueFalse": {
+              "truthValue": true,
+              "reasoning": "Electric current is a scalar quantity.",
+              "conceptExplanation": "Current obeys scalar algebraic addition, not vector addition."
+            },
+            "fillBlank": {
+              "correctTermOrValue": "4.00 A",
+              "explanation": "Algebraic sum of incoming currents gives 4.00 A.",
+              "acceptedEquivalents": [
+                "4 A",
+                "4.0 A",
+                "4"
+              ]
+            },
+            "match": {
+              "pairs": [],
+              "explanationPerPair": []
+            },
+            "fullText": "Given:\n- Current in first branch: I₁ = 2.00 A\n- Current in second branch: I₂ = 2.00 A\n- Angle between wires: θ = 60°\n\nPrinciple:\nElectric current is defined as the scalar rate of charge flow: I = dq/dt.\nAlthough current has a direction along a conductor, it does not obey the laws of vector addition (such as the triangle or parallelogram law of vectors). Instead, charge is conserved at a junction (Kirchhoff's Current Law), requiring scalar algebraic addition regardless of the spatial angle θ between the wires.\n\nCalculation:\nI_out = I₁ + I₂\nI_out = 2.00 A + 2.00 A = 4.00 A\n\nTherefore, the outgoing current is 4.00 A."
+          },
+          "explanation": "Electric current has magnitude and an associated direction along a circuit path, but it is a scalar quantity because it does not obey vector addition laws. By the principle of conservation of electric charge, the total current entering a junction must equal the total current exiting it. Therefore, the outgoing current is the simple algebraic sum 2.00 A + 2.00 A = 4.00 A, completely independent of the 60° angle between the conductors.",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_2",
+          "slotIndex": 2,
+          "question": "A mass m1 = 4 kg is placed at x = 0 m and an unknown mass m2 is placed at x = 10 m. If the center of mass of the two-particle system is located at x = 6 m, determine the mass m2.",
+          "format": "numerical",
+          "userAnswer": "4 kg",
+          "correctAnswer": "6 kg",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m",
+              "required": "m2",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "6 = (4*0 + m2*10) / (4 + m2)",
+              "calculation": "6*(4 + m2) = 10*m2 => 24 + 6*m2 = 10*m2 => 4*m2 = 24 => m2 = 6",
+              "finalAnswer": "6 kg",
+              "unit": "kg"
+            },
+            "fullText": "Given: m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: 6*(4 + m2) = 10*m2 => 24 = 4*m2 => m2 = 6 kg\nFinal Answer: 6 kg"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_3",
+          "slotIndex": 3,
+          "question": "A mass m1 = 4 kg is placed at x = 0 m and an unknown mass m2 is placed at x = 10 m. If the center of mass of the two-particle system is located at x = 6 m, determine the mass m2.",
+          "format": "numerical",
+          "userAnswer": "8 kg",
+          "correctAnswer": "6 kg",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m",
+              "required": "m2",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "6 = (4*0 + m2*10) / (4 + m2)",
+              "calculation": "6*(4 + m2) = 10*m2 => 24 + 6*m2 = 10*m2 => 4*m2 = 24 => m2 = 6",
+              "finalAnswer": "6 kg",
+              "unit": "kg"
+            },
+            "fullText": "Given: m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: 6*(4 + m2) = 10*m2 => 24 = 4*m2 => m2 = 6 kg\nFinal Answer: 6 kg"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_4",
+          "slotIndex": 4,
+          "question": "Two point particles of masses m1 = 2 kg and m2 = 8 kg are positioned along the x-axis at x1 = 0 m and x2 = 10 m respectively. Calculate the coordinate x_cm of their center of mass.",
+          "format": "numerical",
+          "userAnswer": "6.67 m",
+          "correctAnswer": "8 m",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 2 kg, x1 = 0 m, m2 = 8 kg, x2 = 10 m",
+              "required": "x_cm",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "x_cm = (2*0 + 8*10) / (2 + 8)",
+              "calculation": "x_cm = (0 + 80) / 10 = 80 / 10 = 8 m",
+              "finalAnswer": "8 m",
+              "unit": "m"
+            },
+            "fullText": "Given: m1 = 2 kg, x1 = 0 m, m2 = 8 kg, x2 = 10 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: (2*0 + 8*10)/10 = 80/10 = 8 m\nFinal Answer: 8 m"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_5",
+          "slotIndex": 5,
+          "question": "Two point particles of masses m1 = 3 kg and m2 = 4 kg are positioned along the x-axis at x1 = 0 m and x2 = 11 m respectively. Calculate the coordinate x_cm of their center of mass.",
+          "format": "numerical",
+          "userAnswer": "4.71 m",
+          "correctAnswer": "6.29 m",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 3 kg, x1 = 0 m, m2 = 4 kg, x2 = 11 m",
+              "required": "x_cm",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "x_cm = (3*0 + 4*11) / (3 + 4)",
+              "calculation": "x_cm = (0 + 44) / 7 = 44 / 7 = 6.29 m",
+              "finalAnswer": "6.29 m",
+              "unit": "m"
+            },
+            "fullText": "Given: m1 = 3 kg, x1 = 0 m, m2 = 4 kg, x2 = 11 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: (3*0 + 4*11)/7 = 44/7 = 6.29 m\nFinal Answer: 6.29 m"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_6",
+          "slotIndex": 6,
+          "question": "A mass m1 = 4 kg is placed at x = 0 m and an unknown mass m2 is placed at x = 10 m. If the center of mass of the two-particle system is located at x = 6 m, determine the mass m2.",
+          "format": "numerical",
+          "userAnswer": "8 kg",
+          "correctAnswer": "6 kg",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m",
+              "required": "m2",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "6 = (4*0 + m2*10) / (4 + m2)",
+              "calculation": "6*(4 + m2) = 10*m2 => 24 + 6*m2 = 10*m2 => 4*m2 = 24 => m2 = 6",
+              "finalAnswer": "6 kg",
+              "unit": "kg"
+            },
+            "fullText": "Given: m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: 6*(4 + m2) = 10*m2 => 24 = 4*m2 => m2 = 6 kg\nFinal Answer: 6 kg"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_7",
+          "slotIndex": 7,
+          "question": "Two point particles of masses m1 = 5 kg and m2 = 6 kg are positioned along the x-axis at x1 = 0 m and x2 = 7 m respectively. Calculate the coordinate x_cm of their center of mass.",
+          "format": "numerical",
+          "userAnswer": "3.23 m",
+          "correctAnswer": "3.82 m",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 5 kg, x1 = 0 m, m2 = 6 kg, x2 = 7 m",
+              "required": "x_cm",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "x_cm = (5*0 + 6*7) / (5 + 6)",
+              "calculation": "x_cm = (0 + 42) / 11 = 42 / 11 = 3.82 m",
+              "finalAnswer": "3.82 m",
+              "unit": "m"
+            },
+            "fullText": "Given: m1 = 5 kg, x1 = 0 m, m2 = 6 kg, x2 = 7 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: (5*0 + 6*7)/11 = 42/11 = 3.82 m\nFinal Answer: 3.82 m"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_8",
+          "slotIndex": 8,
+          "question": "Two point particles of masses m1 = 2 kg and m2 = 7 kg are positioned along the x-axis at x1 = 0 m and x2 = 8 m respectively. Calculate the coordinate x_cm of their center of mass.",
+          "format": "numerical",
+          "userAnswer": "5.09 m",
+          "correctAnswer": "6.22 m",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 2 kg, x1 = 0 m, m2 = 7 kg, x2 = 8 m",
+              "required": "x_cm",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "x_cm = (2*0 + 7*8) / (2 + 7)",
+              "calculation": "x_cm = (0 + 56) / 9 = 56 / 9 = 6.22 m",
+              "finalAnswer": "6.22 m",
+              "unit": "m"
+            },
+            "fullText": "Given: m1 = 2 kg, x1 = 0 m, m2 = 7 kg, x2 = 8 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: (2*0 + 7*8)/9 = 56/9 = 6.22 m\nFinal Answer: 6.22 m"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_9",
+          "slotIndex": 9,
+          "question": "A mass m1 = 4 kg is placed at x = 0 m and an unknown mass m2 is placed at x = 10 m. If the center of mass of the two-particle system is located at x = 6 m, determine the mass m2.",
+          "format": "numerical",
+          "userAnswer": "4 kg",
+          "correctAnswer": "6 kg",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m",
+              "required": "m2",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "6 = (4*0 + m2*10) / (4 + m2)",
+              "calculation": "6*(4 + m2) = 10*m2 => 24 + 6*m2 = 10*m2 => 4*m2 = 24 => m2 = 6",
+              "finalAnswer": "6 kg",
+              "unit": "kg"
+            },
+            "fullText": "Given: m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: 6*(4 + m2) = 10*m2 => 24 = 4*m2 => m2 = 6 kg\nFinal Answer: 6 kg"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_10",
+          "slotIndex": 10,
+          "question": "Two point particles of masses m1 = 4 kg and m2 = 4 kg are positioned along the x-axis at x1 = 0 m and x2 = 10 m respectively. Calculate the coordinate x_cm of their center of mass.",
+          "format": "numerical",
+          "userAnswer": "5 m",
+          "correctAnswer": "5 m",
+          "isCorrect": true,
+          "resultLocalized": "TRUE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 4 kg, x1 = 0 m, m2 = 4 kg, x2 = 10 m",
+              "required": "x_cm",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "x_cm = (4*0 + 4*10) / (4 + 4)",
+              "calculation": "x_cm = (0 + 40) / 8 = 40 / 8 = 5 m",
+              "finalAnswer": "5 m",
+              "unit": "m"
+            },
+            "fullText": "Given: m1 = 4 kg, x1 = 0 m, m2 = 4 kg, x2 = 10 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: (4*0 + 4*10)/8 = 40/8 = 5 m\nFinal Answer: 5 m"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_11",
+          "slotIndex": 11,
+          "question": "Two point particles of masses m1 = 5 kg and m2 = 5 kg are positioned along the x-axis at x1 = 0 m and x2 = 11 m respectively. Calculate the coordinate x_cm of their center of mass.",
+          "format": "numerical",
+          "userAnswer": "6.7 m",
+          "correctAnswer": "5.5 m",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 5 kg, x1 = 0 m, m2 = 5 kg, x2 = 11 m",
+              "required": "x_cm",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "x_cm = (5*0 + 5*11) / (5 + 5)",
+              "calculation": "x_cm = (0 + 55) / 10 = 55 / 10 = 5.5 m",
+              "finalAnswer": "5.5 m",
+              "unit": "m"
+            },
+            "fullText": "Given: m1 = 5 kg, x1 = 0 m, m2 = 5 kg, x2 = 11 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: (5*0 + 5*11)/10 = 55/10 = 5.5 m\nFinal Answer: 5.5 m"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_12",
+          "slotIndex": 12,
+          "question": "A mass m1 = 4 kg is placed at x = 0 m and an unknown mass m2 is placed at x = 10 m. If the center of mass of the two-particle system is located at x = 6 m, determine the mass m2.",
+          "format": "numerical",
+          "userAnswer": "12 kg",
+          "correctAnswer": "6 kg",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m",
+              "required": "m2",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "6 = (4*0 + m2*10) / (4 + m2)",
+              "calculation": "6*(4 + m2) = 10*m2 => 24 + 6*m2 = 10*m2 => 4*m2 = 24 => m2 = 6",
+              "finalAnswer": "6 kg",
+              "unit": "kg"
+            },
+            "fullText": "Given: m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: 6*(4 + m2) = 10*m2 => 24 = 4*m2 => m2 = 6 kg\nFinal Answer: 6 kg"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_13",
+          "slotIndex": 13,
+          "question": "Two point particles of masses m1 = 3 kg and m2 = 7 kg are positioned along the x-axis at x1 = 0 m and x2 = 7 m respectively. Calculate the coordinate x_cm of their center of mass.",
+          "format": "numerical",
+          "userAnswer": "4.08 m",
+          "correctAnswer": "4.9 m",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 3 kg, x1 = 0 m, m2 = 7 kg, x2 = 7 m",
+              "required": "x_cm",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "x_cm = (3*0 + 7*7) / (3 + 7)",
+              "calculation": "x_cm = (0 + 49) / 10 = 49 / 10 = 4.9 m",
+              "finalAnswer": "4.9 m",
+              "unit": "m"
+            },
+            "fullText": "Given: m1 = 3 kg, x1 = 0 m, m2 = 7 kg, x2 = 7 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: (3*0 + 7*7)/10 = 49/10 = 4.9 m\nFinal Answer: 4.9 m"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_14",
+          "slotIndex": 14,
+          "question": "Two point particles of masses m1 = 4 kg and m2 = 8 kg are positioned along the x-axis at x1 = 0 m and x2 = 8 m respectively. Calculate the coordinate x_cm of their center of mass.",
+          "format": "numerical",
+          "userAnswer": "5.33 m",
+          "correctAnswer": "5.33 m",
+          "isCorrect": true,
+          "resultLocalized": "TRUE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 4 kg, x1 = 0 m, m2 = 8 kg, x2 = 8 m",
+              "required": "x_cm",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "x_cm = (4*0 + 8*8) / (4 + 8)",
+              "calculation": "x_cm = (0 + 64) / 12 = 64 / 12 = 5.33 m",
+              "finalAnswer": "5.33 m",
+              "unit": "m"
+            },
+            "fullText": "Given: m1 = 4 kg, x1 = 0 m, m2 = 8 kg, x2 = 8 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: (4*0 + 8*8)/12 = 64/12 = 5.33 m\nFinal Answer: 5.33 m"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_15",
+          "slotIndex": 15,
+          "question": "A mass m1 = 4 kg is placed at x = 0 m and an unknown mass m2 is placed at x = 10 m. If the center of mass of the two-particle system is located at x = 6 m, determine the mass m2.",
+          "format": "numerical",
+          "userAnswer": "4 kg",
+          "correctAnswer": "6 kg",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m",
+              "required": "m2",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "6 = (4*0 + m2*10) / (4 + m2)",
+              "calculation": "6*(4 + m2) = 10*m2 => 24 + 6*m2 = 10*m2 => 4*m2 = 24 => m2 = 6",
+              "finalAnswer": "6 kg",
+              "unit": "kg"
+            },
+            "fullText": "Given: m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: 6*(4 + m2) = 10*m2 => 24 = 4*m2 => m2 = 6 kg\nFinal Answer: 6 kg"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_16",
+          "slotIndex": 16,
+          "question": "Two point particles of masses m1 = 2 kg and m2 = 5 kg are positioned along the x-axis at x1 = 0 m and x2 = 10 m respectively. Calculate the coordinate x_cm of their center of mass.",
+          "format": "numerical",
+          "userAnswer": "2.86 m",
+          "correctAnswer": "7.14 m",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 2 kg, x1 = 0 m, m2 = 5 kg, x2 = 10 m",
+              "required": "x_cm",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "x_cm = (2*0 + 5*10) / (2 + 5)",
+              "calculation": "x_cm = (0 + 50) / 7 = 50 / 7 = 7.14 m",
+              "finalAnswer": "7.14 m",
+              "unit": "m"
+            },
+            "fullText": "Given: m1 = 2 kg, x1 = 0 m, m2 = 5 kg, x2 = 10 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: (2*0 + 5*10)/7 = 50/7 = 7.14 m\nFinal Answer: 7.14 m"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_17",
+          "slotIndex": 17,
+          "question": "Two point particles of masses m1 = 3 kg and m2 = 6 kg are positioned along the x-axis at x1 = 0 m and x2 = 11 m respectively. Calculate the coordinate x_cm of their center of mass.",
+          "format": "numerical",
+          "userAnswer": "7.33 m",
+          "correctAnswer": "7.33 m",
+          "isCorrect": true,
+          "resultLocalized": "TRUE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 3 kg, x1 = 0 m, m2 = 6 kg, x2 = 11 m",
+              "required": "x_cm",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "x_cm = (3*0 + 6*11) / (3 + 6)",
+              "calculation": "x_cm = (0 + 66) / 9 = 66 / 9 = 7.33 m",
+              "finalAnswer": "7.33 m",
+              "unit": "m"
+            },
+            "fullText": "Given: m1 = 3 kg, x1 = 0 m, m2 = 6 kg, x2 = 11 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: (3*0 + 6*11)/9 = 66/9 = 7.33 m\nFinal Answer: 7.33 m"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_18",
+          "slotIndex": 18,
+          "question": "A mass m1 = 4 kg is placed at x = 0 m and an unknown mass m2 is placed at x = 10 m. If the center of mass of the two-particle system is located at x = 6 m, determine the mass m2.",
+          "format": "numerical",
+          "userAnswer": "4 kg",
+          "correctAnswer": "6 kg",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "numerical",
+            "numerical": {
+              "given": "m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m",
+              "required": "m2",
+              "relationship": "x_cm = (m1*x1 + m2*x2) / (m1 + m2)",
+              "substitution": "6 = (4*0 + m2*10) / (4 + m2)",
+              "calculation": "6*(4 + m2) = 10*m2 => 24 + 6*m2 = 10*m2 => 4*m2 = 24 => m2 = 6",
+              "finalAnswer": "6 kg",
+              "unit": "kg"
+            },
+            "fullText": "Given: m1 = 4 kg, x1 = 0 m, x2 = 10 m, x_cm = 6 m\nFormula: x_cm = (m1*x1 + m2*x2)/(m1 + m2)\nCalculation: 6*(4 + m2) = 10*m2 => 24 = 4*m2 => m2 = 6 kg\nFinal Answer: 6 kg"
+          },
+          "explanation": "Calculated using mass-weighted coordinate summation: x_cm = (m1*x1 + m2*x2)/(m1 + m2).",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_19",
+          "slotIndex": 19,
+          "question": "In the absence of net external forces, internal forces within a system of particles cannot alter the velocity of the system's center of mass.",
+          "format": "true_false",
+          "userAnswer": "True",
+          "correctAnswer": "True",
+          "isCorrect": true,
+          "resultLocalized": "TRUE",
+          "solution": {
+            "format": "true_false",
+            "trueFalse": {
+              "truthValue": true,
+              "reasoning": "Internal forces strictly cancel in mutual action-reaction pairs according to Newton's Third Law (F_int = 0), leaving F_ext = M * a_cm = 0.",
+              "conceptExplanation": "Center of mass kinematics is governed purely by external forces and mass distribution symmetry."
+            },
+            "fullText": "Answer: True\nReasoning: Internal forces strictly cancel in mutual action-reaction pairs according to Newton's Third Law (F_int = 0), leaving F_ext = M * a_cm = 0."
+          },
+          "explanation": "Internal forces strictly cancel in mutual action-reaction pairs according to Newton's Third Law (F_int = 0), leaving F_ext = M * a_cm = 0.",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_20",
+          "slotIndex": 20,
+          "question": "The center of mass of every rigid body must always lie within the physical boundaries of its material matter.",
+          "format": "true_false",
+          "userAnswer": "False",
+          "correctAnswer": "False",
+          "isCorrect": true,
+          "resultLocalized": "TRUE",
+          "solution": {
+            "format": "true_false",
+            "trueFalse": {
+              "truthValue": false,
+              "reasoning": "The center of mass of bodies with geometric symmetry, such as a hollow ring or hollow cylinder, lies at the geometric center in empty space.",
+              "conceptExplanation": "Center of mass kinematics is governed purely by external forces and mass distribution symmetry."
+            },
+            "fullText": "Answer: False\nReasoning: The center of mass of bodies with geometric symmetry, such as a hollow ring or hollow cylinder, lies at the geometric center in empty space."
+          },
+          "explanation": "The center of mass of bodies with geometric symmetry, such as a hollow ring or hollow cylinder, lies at the geometric center in empty space.",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_21",
+          "slotIndex": 21,
+          "question": "In the absence of net external forces, internal forces within a system of particles cannot alter the velocity of the system's center of mass.",
+          "format": "true_false",
+          "userAnswer": "True",
+          "correctAnswer": "True",
+          "isCorrect": true,
+          "resultLocalized": "TRUE",
+          "solution": {
+            "format": "true_false",
+            "trueFalse": {
+              "truthValue": true,
+              "reasoning": "Internal forces strictly cancel in mutual action-reaction pairs according to Newton's Third Law (F_int = 0), leaving F_ext = M * a_cm = 0.",
+              "conceptExplanation": "Center of mass kinematics is governed purely by external forces and mass distribution symmetry."
+            },
+            "fullText": "Answer: True\nReasoning: Internal forces strictly cancel in mutual action-reaction pairs according to Newton's Third Law (F_int = 0), leaving F_ext = M * a_cm = 0."
+          },
+          "explanation": "Internal forces strictly cancel in mutual action-reaction pairs according to Newton's Third Law (F_int = 0), leaving F_ext = M * a_cm = 0.",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_22",
+          "slotIndex": 22,
+          "question": "When the net external force acting on a system of particles is zero, the total linear momentum of the system remains ________.",
+          "format": "fill_blank",
+          "userAnswer": "hdshs",
+          "correctAnswer": "conserved",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "fill_blank",
+            "fillBlank": {
+              "correctTermOrValue": "conserved",
+              "explanation": "F_ext = dP/dt = 0 directly implies that total momentum P is strictly conserved.",
+              "acceptedEquivalents": [
+                "constant",
+                "conserved",
+                "unchanged"
+              ]
+            },
+            "fullText": "Correct Fill-in: conserved\nExplanation: F_ext = dP/dt = 0 directly implies that total momentum P is strictly conserved."
+          },
+          "explanation": "F_ext = dP/dt = 0 directly implies that total momentum P is strictly conserved.",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_23",
+          "slotIndex": 23,
+          "question": "The center of mass of a two-particle system divides the distance between them inversely proportional to their ________.",
+          "format": "fill_blank",
+          "userAnswer": "force",
+          "correctAnswer": "masses",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "fill_blank",
+            "fillBlank": {
+              "correctTermOrValue": "masses",
+              "explanation": "The lever arm relationship m1 * r1 = m2 * r2 establishes that distance from center of mass is inversely proportional to mass.",
+              "acceptedEquivalents": [
+                "mass",
+                "mass ratio",
+                "particle masses"
+              ]
+            },
+            "fullText": "Correct Fill-in: masses\nExplanation: The lever arm relationship m1 * r1 = m2 * r2 establishes that distance from center of mass is inversely proportional to mass."
+          },
+          "explanation": "The lever arm relationship m1 * r1 = m2 * r2 establishes that distance from center of mass is inversely proportional to mass.",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_24",
+          "slotIndex": 24,
+          "question": "Match each physical system configuration in Column A with its correct Center of Mass property in Column B:",
+          "format": "match_columns",
+          "userAnswer": "1-A, 2-B, 3-C, 4-D",
+          "correctAnswer": "1-B, 2-A, 3-C, 4-D",
+          "isCorrect": true,
+          "resultLocalized": "TRUE",
+          "solution": {
+            "format": "match_columns",
+            "match": {
+              "pairs": [
+                {
+                  "itemA": "Ring / Hollow Loop",
+                  "itemB": "Center of mass lies in empty space"
+                },
+                {
+                  "itemA": "Two equal masses m and m",
+                  "itemB": "Exact midpoint between particles"
+                },
+                {
+                  "itemA": "Zero Net External Force",
+                  "itemB": "Center of mass velocity is constant"
+                },
+                {
+                  "itemA": "Heavy mass m1 >> m2",
+                  "itemB": "Center of mass virtually coincides with m1"
+                }
+              ],
+              "explanationPerPair": [
+                {
+                  "pair": "1-B",
+                  "explanation": "Geometric symmetry places the center of mass at the center of the ring where no mass exists."
+                },
+                {
+                  "pair": "2-A",
+                  "explanation": "Equal masses divide the line segment 1:1, locating the center at the midpoint."
+                },
+                {
+                  "pair": "3-C",
+                  "explanation": "F_ext = M*a_cm = 0 implies a_cm = 0, keeping v_cm constant."
+                },
+                {
+                  "pair": "4-D",
+                  "explanation": "Inversely proportional lever arm pulls x_cm towards the heavily dominant mass."
+                }
+              ]
+            },
+            "fullText": "Correct Match: 1-B, 2-A, 3-C, 4-D"
+          },
+          "explanation": "Each configuration follows directly from the definition and kinematic governing laws of the center of mass.",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        },
+        {
+          "questionId": "q_25",
+          "slotIndex": 25,
+          "question": "Why is the center of mass concept invaluable for analyzing complex internal interactions such as explosions or mutual collisions?",
+          "format": "theoretical",
+          "userAnswer": "Not answered",
+          "correctAnswer": "Because internal forces vectorially cancel out in pairs, leaving the motion of the center of mass completely undisturbed.",
+          "isCorrect": false,
+          "resultLocalized": "FALSE",
+          "solution": {
+            "format": "theoretical",
+            "theory": {
+              "concept": "Invariance of Center of Mass under Internal Forces",
+              "reasoning": "Newton's Third Law guarantees that internal action-reaction pairs sum to zero (sum F_internal = 0). Thus, internal forces cannot produce any net acceleration of the center of mass.",
+              "correctExplanation": "Only external forces can accelerate the center of mass (F_ext = M*a_cm)."
+            },
+            "fullText": "Correct Option: Because internal forces vectorially cancel out in pairs, leaving the motion of the center of mass completely undisturbed.\nReasoning: Newton's Third Law guarantees that internal action-reaction pairs sum to zero (sum F_internal = 0). Thus, internal forces cannot produce any net acceleration of the center of mass."
+          },
+          "explanation": "Newton's Third Law guarantees that internal action-reaction pairs sum to zero (sum F_internal = 0). Thus, internal forces cannot produce any net acceleration of the center of mass.",
+          "conceptTested": "Angle Between Two Vectors",
+          "conceptId": "C3"
+        }
+      ],
+      "conceptCoverageTable": [
+        {
+          "conceptId": "C3",
+          "conceptName": "Angle Between Two Vectors",
+          "questionsCount": 25,
+          "correctCount": 8,
+          "incorrectCount": 17,
+          "percentage": 32
+        }
+      ],
+      "strongConcepts": [],
+      "weakConcepts": [
+        {
+          "conceptId": "C3",
+          "conceptName": "Angle Between Two Vectors",
+          "percentage": 32
+        }
+      ],
+      "recommendedRevision": [
+        {
+          "conceptId": "C3",
+          "conceptName": "Angle Between Two Vectors",
+          "summary": "Review principle: The angle between the directions of two vectors when placed tail-to-tail (or head-to-head), typically taking the non-reflex angle (0° <= θ <= 180°). Common mistake: Treating electric current as a vector because it has a specific direction in a circuit (it does not obey vector addition).",
+          "timestampFormatted": "00:10",
+          "timestampSeconds": 10
+        }
+      ]
+    }
+  }
+]

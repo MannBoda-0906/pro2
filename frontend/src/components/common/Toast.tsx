@@ -14,7 +14,7 @@ interface ToastProps {
 
 export const ToastContainer: React.FC<ToastProps> = ({ toasts, onDismiss }) => {
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-md w-full px-4 pointer-events-none">
+    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-md w-full px-4 pointer-events-none">
       {toasts.map(t => (
         <ToastItem key={t.id} toast={t} onDismiss={onDismiss} />
       ))}
@@ -34,29 +34,29 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
   }, [toast.id, onDismiss]);
 
   const icons = {
-    success: <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />,
-    error: <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />,
-    info: <Info className="w-5 h-5 text-brand-500 shrink-0" />
+    success: <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />,
+    error: <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />,
+    info: <Info className="w-5 h-5 text-[#4938C8] shrink-0" />
   };
 
-  const borders = {
-    success: 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/95 dark:bg-emerald-950/90 text-emerald-950 dark:text-emerald-100',
-    error: 'border-rose-200 dark:border-rose-800/50 bg-rose-50/95 dark:bg-rose-950/90 text-rose-950 dark:text-rose-100',
-    info: 'border-brand-200 dark:border-brand-800/50 bg-brand-50/95 dark:bg-brand-950/90 text-brand-950 dark:text-brand-100'
+  const badgeBorders = {
+    success: 'border-emerald-200 bg-white/95 text-[#17172D]',
+    error: 'border-rose-200 bg-white/95 text-[#17172D]',
+    info: 'border-[#DFE1F0] bg-white/95 text-[#17172D]'
   };
 
   return (
     <div
-      className={`pointer-events-auto flex items-center justify-between gap-3 p-4 rounded-xl border shadow-lg backdrop-blur-sm transition-all duration-300 animate-slide-up ${borders[toast.type]}`}
+      className={`pointer-events-auto flex items-center justify-between gap-3 p-4 rounded-2xl border shadow-floating backdrop-blur-xl transition-all duration-300 animate-slide-up ${badgeBorders[toast.type]}`}
     >
       <div className="flex items-center gap-3">
         {icons[toast.type]}
-        <p className="text-sm font-medium leading-snug">{toast.message}</p>
+        <p className="text-xs sm:text-sm font-medium leading-snug text-[#17172D]">{toast.message}</p>
       </div>
       <button
         onClick={() => onDismiss(toast.id)}
-        className="p-1 rounded-lg opacity-70 hover:opacity-100 transition-opacity"
-        aria-label="Dismiss"
+        className="p-1.5 rounded-lg text-[#666A83] hover:text-[#17172D] hover:bg-[#EEEEFF] transition-colors"
+        aria-label="Dismiss toast"
       >
         <X className="w-4 h-4" />
       </button>

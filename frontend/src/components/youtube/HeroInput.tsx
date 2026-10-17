@@ -43,12 +43,11 @@ const LANGUAGE_OPTIONS = [
 ];
 
 const ANALYSIS_STAGES = [
-  'Reading available lesson content',
-  'Identifying topics',
-  'Understanding concepts',
-  'Finding exam-important points',
-  'Building questions',
-  'Translating quiz',
+  'Fetching captions & transcript',
+  'Analyzing video lecture',
+  'Extracting knowledge map & concepts',
+  'Planning examination distribution',
+  'Building & validating exam questions',
   'Checking question quality'
 ];
 
@@ -134,37 +133,37 @@ export const HeroInput: React.FC<HeroInputProps> = ({
     <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-12 animate-fade-in">
       {/* Hero Badge */}
       <div className="flex justify-center mb-6">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-50 dark:bg-brand-950/70 border border-brand-200 dark:border-brand-800 text-xs font-semibold text-brand-700 dark:text-brand-300 shadow-xs">
-          <GraduationCap className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-          <span>Intelligent Concept-Level Analysis • Exam-Oriented Quiz</span>
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#EEEEFF] border border-[#DFE1F0] text-xs font-semibold text-[#4938C8] shadow-xs">
+          <GraduationCap className="w-4 h-4 text-[#4938C8]" />
+          <span>Lumora Spatial Education • Concept Mastery & Exam Practice</span>
         </div>
       </div>
 
       {/* Main Heading */}
       <div className="text-center max-w-3xl mx-auto mb-10">
-        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.15]">
-          Turn a YouTube Lesson Into Your{' '}
-          <span className="bg-gradient-to-r from-brand-600 via-indigo-600 to-violet-500 bg-clip-text text-transparent">
-            Personal Exam Practice
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[#17172D] leading-[1.15]">
+          Turn Any Study Video Into Your{' '}
+          <span className="text-[#4938C8]">
+            Spatial Exam Practice
           </span>
         </h1>
-        <p className="mt-4 sm:mt-5 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
-          The AI acts like an intelligent teacher who watched and understood the lesson — analyzing topics, concepts, formulas, and misconceptions to test true conceptual understanding.
+        <p className="mt-4 sm:mt-5 text-base sm:text-lg text-[#666A83] leading-relaxed font-normal">
+          Lumora AI analyzes topics, concepts, formulas, and common misconceptions with mathematical precision — delivering concept knowledge maps and 25 procedurally unique exam questions with step-by-step solutions.
         </p>
       </div>
 
-      {/* Interactive Exam Configurator & Input Card */}
+      {/* Interactive Exam Configurator & Input Card (Layer 1 Surface) */}
       <div className="max-w-3xl mx-auto mb-12">
-        <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border-2 border-slate-200/90 dark:border-slate-800 shadow-xl shadow-brand-500/5 relative overflow-hidden">
+        <div className="p-6 sm:p-8 rounded-[24px] bg-white border border-[#DFE1F0] shadow-resting hover:shadow-raised transition-all relative overflow-hidden">
           
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* 1. YouTube URL Input */}
             <div>
-              <label htmlFor="youtube-url-input" className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
-                YouTube URL
+              <label htmlFor="youtube-url-input" className="block text-xs font-bold uppercase tracking-wider text-[#17172D] mb-2">
+                YouTube Video Lesson Link
               </label>
-              <div className="relative flex items-center shadow-inner rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 focus-within:border-brand-500 dark:focus-within:border-brand-500 transition-all p-1.5 sm:p-2">
-                <div className="pl-3 pr-2 text-red-500 shrink-0">
+              <div className="relative flex items-center rounded-2xl bg-white border border-[#DFE1F0] focus-within:border-[#4938C8] focus-within:ring-2 focus-within:ring-[#5B46E8]/20 transition-all p-1.5 sm:p-2 shadow-xs">
+                <div className="pl-3 pr-2 text-rose-500 shrink-0">
                   <Youtube className="w-6 h-6" />
                 </div>
 
@@ -178,7 +177,7 @@ export const HeroInput: React.FC<HeroInputProps> = ({
                   }}
                   placeholder="Paste YouTube link (e.g., https://youtube.com/watch?v=... or https://youtu.be/...)"
                   disabled={isLoading}
-                  className="w-full bg-transparent px-2 py-2 text-sm sm:text-base text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
+                  className="w-full bg-transparent px-2 py-2 text-sm sm:text-base text-[#17172D] placeholder:text-[#666A83] focus:outline-none"
                 />
 
                 {!url && (
@@ -186,7 +185,7 @@ export const HeroInput: React.FC<HeroInputProps> = ({
                     type="button"
                     onClick={handlePasteClipboard}
                     disabled={isLoading}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 mr-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-brand-600 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 mr-1 text-xs font-semibold text-[#4938C8] bg-[#EEEEFF] hover:bg-[#E0E1FC] rounded-xl transition-all shrink-0 active:scale-95"
                     title="Paste from clipboard"
                   >
                     <ClipboardPaste className="w-3.5 h-3.5" />
@@ -196,15 +195,15 @@ export const HeroInput: React.FC<HeroInputProps> = ({
               </div>
             </div>
 
-            {/* 2. Choose Quiz Language Selector (Prominent near URL input) */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+            {/* 2. Choose Quiz Language Selector */}
+            <div className="pt-2 border-t border-[#DFE1F0]">
               <div className="flex items-center justify-between mb-2.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <Languages className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-                  <span>Choose Quiz Language</span>
+                <label className="text-xs font-bold uppercase tracking-wider text-[#17172D] flex items-center gap-1.5">
+                  <Languages className="w-4 h-4 text-[#4938C8]" />
+                  <span>Choose Study & Quiz Language</span>
                 </label>
-                <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                  AI understands video & generates quiz in this language
+                <span className="text-[11px] text-[#666A83]">
+                  Scientific formulas and terms preserved
                 </span>
               </div>
 
@@ -217,23 +216,23 @@ export const HeroInput: React.FC<HeroInputProps> = ({
                       type="button"
                       onClick={() => onLanguageChange(lang.code)}
                       disabled={isLoading}
-                      className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left transition-all ${
+                      className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left transition-all active:scale-98 ${
                         isSelected
-                          ? 'border-brand-500 bg-brand-50/80 dark:bg-brand-950/60 text-brand-950 dark:text-brand-100 font-bold shadow-xs ring-1 ring-brand-500/30'
-                          : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-950/50 text-slate-700 dark:text-slate-300'
+                          ? 'border-[#4938C8] bg-[#EEEEFF] text-[#4938C8] font-bold shadow-xs ring-1 ring-[#4938C8]/30'
+                          : 'border-[#DFE1F0] hover:border-[#5B46E8]/40 bg-white text-[#666A83]'
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-base">{lang.flag}</span>
                         <div>
                           <p className="text-xs font-bold leading-tight">{lang.label}</p>
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500">{lang.native}</p>
+                          <p className="text-[10px] text-[#666A83]">{lang.native}</p>
                         </div>
                       </div>
                       <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
                         isSelected
-                          ? 'border-brand-600 bg-brand-600 text-white'
-                          : 'border-slate-300 dark:border-slate-700'
+                          ? 'border-[#4938C8] bg-[#4938C8] text-white'
+                          : 'border-[#DFE1F0]'
                       }`}>
                         {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                       </span>
@@ -244,69 +243,74 @@ export const HeroInput: React.FC<HeroInputProps> = ({
             </div>
 
             {/* 3. Difficulty & Question Count Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#DFE1F0]">
               {/* Difficulty */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#17172D] mb-2 flex items-center gap-1.5">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-[#4938C8]" />
                   <span>Difficulty Level</span>
                 </label>
-                <div className="grid grid-cols-3 gap-1.5 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+                <div className="grid grid-cols-3 gap-1.5 bg-[#F8F9FD] p-1 rounded-xl border border-[#DFE1F0]">
                   {(['easy', 'medium', 'hard'] as const).map(diff => (
                     <button
                       key={diff}
                       type="button"
                       onClick={() => onDifficultyChange(diff)}
                       disabled={isLoading}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all active:scale-95 ${
                         selectedDifficulty === diff
-                          ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-300 shadow-xs'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                          ? 'bg-white text-[#4938C8] shadow-xs'
+                          : 'text-[#666A83] hover:text-[#17172D]'
                       }`}
                     >
                       {diff}
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                  {selectedDifficulty === 'easy' && 'Focus on definitions, basic facts, and simple understanding.'}
+                <p className="text-[10px] text-[#666A83] mt-1">
+                  {selectedDifficulty === 'easy' && 'Focus on definitions, basic principles, and direct application.'}
                   {selectedDifficulty === 'medium' && 'Balanced conceptual understanding, application & comparisons.'}
-                  {selectedDifficulty === 'hard' && 'Multi-step reasoning, calculations, analysis & misconceptions.'}
+                  {selectedDifficulty === 'hard' && 'Multi-step reasoning, calculations, constraint analysis & edge cases.'}
                 </p>
               </div>
 
               {/* Number of Questions */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5">
-                  <Target className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Number of Questions</span>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#17172D] mb-2 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-[#4938C8]" />
+                    <span>Number of Questions</span>
+                  </span>
+                  <span className="text-[10px] text-[#4938C8] font-bold bg-[#EEEEFF] px-2.5 py-0.5 rounded-full border border-[#DFE1F0]">
+                    {selectedCount === 25 ? '25 Qs Standard' : `${selectedCount} Qs Selected`}
+                  </span>
                 </label>
-                <div className="grid grid-cols-4 gap-1.5 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-                  {[5, 10, 15, 20].map(cnt => (
+                <div className="grid grid-cols-4 gap-1.5 bg-[#F8F9FD] p-1 rounded-xl border border-[#DFE1F0]">
+                  {[25, 20, 15, 10].map(cnt => (
                     <button
                       key={cnt}
                       type="button"
                       onClick={() => onCountChange(cnt)}
                       disabled={isLoading}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all active:scale-95 ${
                         selectedCount === cnt
-                          ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-300 shadow-xs'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                          ? 'bg-[#4938C8] text-white shadow-xs'
+                          : 'text-[#666A83] hover:text-[#17172D]'
                       }`}
                     >
-                      {cnt} Qs
+                      {cnt === 25 ? '25 Qs' : `${cnt} Qs`}
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                  Proportionally distributed across cognitive levels.
+                <p className="text-[10px] text-[#666A83] mt-1 flex items-center justify-between">
+                  <span>Standard ratio: ~70% Numerical & Problem-Solving, ~30% Conceptual</span>
                 </p>
               </div>
             </div>
 
             {/* Error Message */}
             {inputError && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs sm:text-sm animate-fade-in flex items-center justify-between">
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm animate-fade-in flex items-center justify-between shadow-xs">
                 <span>{inputError}</span>
                 <button
                   type="button"
@@ -318,22 +322,22 @@ export const HeroInput: React.FC<HeroInputProps> = ({
               </div>
             )}
 
-            {/* Action Submit Button */}
+            {/* Primary Action Submit Button (Spatial CTA) */}
             <button
               type="submit"
               id="analyze-video-quiz-button"
               disabled={isLoading}
-              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-brand-600 via-indigo-600 to-violet-600 hover:from-brand-700 hover:via-indigo-700 hover:to-violet-700 active:scale-[0.99] text-white font-bold text-base shadow-lg shadow-brand-600/25 transition-all flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full py-4 px-6 rounded-2xl bg-[#4938C8] hover:bg-[#5B46E8] active:scale-[0.98] text-white font-bold text-base shadow-cta hover:shadow-cta-hover transition-all flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5"
             >
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Analyzing Lesson & Building Quiz...</span>
+                  <span>Analyzing Lesson & Building {selectedCount}-Question Quiz...</span>
                 </>
               ) : (
                 <>
                   <Sparkles className="w-5 h-5" />
-                  <span>Analyze Video & Create Quiz</span>
+                  <span>Analyze Video & Generate Spatial Quiz</span>
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
@@ -342,21 +346,21 @@ export const HeroInput: React.FC<HeroInputProps> = ({
 
           {/* Loading Stage Progression Card */}
           {isLoading && (
-            <div className="mt-6 p-5 rounded-2xl bg-brand-50/70 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800 animate-fade-in space-y-4">
+            <div className="mt-6 p-5 rounded-2xl bg-[#F8F9FD] border border-[#DFE1F0] animate-fade-in space-y-4 shadow-resting">
               <div className="flex items-center gap-3">
-                <Loader2 className="w-5 h-5 text-brand-600 animate-spin shrink-0" />
+                <Loader2 className="w-5 h-5 text-[#4938C8] animate-spin shrink-0" />
                 <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                  <h4 className="font-bold text-sm text-[#17172D]">
                     Analyzing your lesson...
                   </h4>
-                  <p className="text-xs text-brand-700 dark:text-brand-300">
+                  <p className="text-xs text-[#4938C8] font-medium">
                     {loadingStep || ANALYSIS_STAGES[activeStageIndex]}
                   </p>
                 </div>
               </div>
 
               {/* Step Checklist */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-brand-200/60 dark:border-brand-800/60">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-[#DFE1F0]">
                 {ANALYSIS_STAGES.map((stage, idx) => {
                   const isDone = idx < activeStageIndex;
                   const isCurrent = idx === activeStageIndex;
@@ -365,10 +369,10 @@ export const HeroInput: React.FC<HeroInputProps> = ({
                       key={stage}
                       className={`flex items-center gap-2 text-xs transition-opacity ${
                         isDone
-                          ? 'text-emerald-700 dark:text-emerald-400 font-semibold'
+                          ? 'text-emerald-700 font-semibold'
                           : isCurrent
-                          ? 'text-brand-600 dark:text-brand-300 font-bold animate-pulse'
-                          : 'text-slate-400 dark:text-slate-600'
+                          ? 'text-[#4938C8] font-bold animate-pulse'
+                          : 'text-[#666A83] opacity-60'
                       }`}
                     >
                       {isDone ? (
@@ -384,19 +388,19 @@ export const HeroInput: React.FC<HeroInputProps> = ({
                 })}
               </div>
 
-              <p className="text-[11px] text-center text-slate-500 dark:text-slate-400 pt-1">
+              <p className="text-[11px] text-center text-[#666A83] pt-1">
                 Your concept-based quiz is ready shortly.
               </p>
             </div>
           )}
 
           {/* Quick Info Footer */}
-          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800/80 pt-3">
-            <span>⚡ Concept Analysis: Understands lessons language-neutrally before generating quiz</span>
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-[#666A83] border-t border-[#DFE1F0] pt-3">
+            <span>⚡ Procedural Anti-Repetition: 25 distinct archetypes guaranteed</span>
             <button
               type="button"
               onClick={onOpenManualTranscript}
-              className="text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1"
+              className="text-[#4938C8] font-medium hover:underline flex items-center gap-1"
             >
               <FileEdit className="w-3 h-3" />
               <span>Paste custom transcript manually</span>
@@ -405,9 +409,9 @@ export const HeroInput: React.FC<HeroInputProps> = ({
         </div>
       </div>
 
-      {/* Demo Quick-Start Chips with Language Context */}
+      {/* Demo Quick-Start Chips (Layer 1 Floating Chips) */}
       <div className="max-w-3xl mx-auto mb-16 text-center">
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-[#666A83] mb-3">
           Or test instantly with pre-verified study lectures ({LANGUAGE_OPTIONS.find(l => l.code === selectedLanguage)?.label} Quiz)
         </p>
         <div className="flex flex-wrap justify-center gap-3">
@@ -420,14 +424,16 @@ export const HeroInput: React.FC<HeroInputProps> = ({
                 count: selectedCount
               })}
               disabled={isLoading}
-              className="group inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-500 dark:hover:border-brand-500 shadow-sm hover:shadow transition-all text-left"
+              className="group inline-flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-white border border-[#DFE1F0] hover:border-[#5B46E8] shadow-resting hover:shadow-raised hover:-translate-y-1 active:scale-95 transition-all text-left"
             >
-              <PlayCircle className="w-4 h-4 text-brand-600 group-hover:scale-110 transition-transform shrink-0" />
+              <div className="w-8 h-8 rounded-xl bg-[#EEEEFF] text-[#4938C8] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <PlayCircle className="w-4 h-4" />
+              </div>
               <div>
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                <p className="text-xs font-bold text-[#17172D] group-hover:text-[#4938C8] transition-colors">
                   {demo.title.split(':')[0]}
                 </p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                <p className="text-[10px] text-[#666A83]">
                   {demo.author} • {demo.duration}
                 </p>
               </div>
@@ -436,56 +442,57 @@ export const HeroInput: React.FC<HeroInputProps> = ({
         </div>
       </div>
 
-      {/* Feature Highlights Grid */}
+      {/* Feature Highlights Grid (Layer 1 Soft Floating Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-16">
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-950/80 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-4">
-            <Brain className="w-5 h-5" />
+        <div className="p-6 rounded-[22px] bg-white border border-[#DFE1F0] shadow-resting hover:shadow-raised hover:-translate-y-1 transition-all">
+          <div className="w-12 h-12 rounded-2xl bg-[#EEEEFF] text-[#4938C8] flex items-center justify-center mb-4 shadow-xs">
+            <Brain className="w-6 h-6" />
           </div>
-          <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5">
+          <h3 className="font-bold text-base text-[#17172D] mb-1.5">
             Concept Knowledge Map
           </h3>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-            Identifies core mechanisms, formulas, processes, and relationships between concepts rather than memorizing transcript lines.
+          <p className="text-xs sm:text-sm text-[#666A83] leading-relaxed">
+            Identifies core mechanisms, formulas, and causal relationships rather than surface transcript lines.
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4">
-            <Target className="w-5 h-5" />
+        <div className="p-6 rounded-[22px] bg-white border border-[#DFE1F0] shadow-resting hover:shadow-raised hover:-translate-y-1 transition-all">
+          <div className="w-12 h-12 rounded-2xl bg-[#EEEEFF] text-[#4938C8] flex items-center justify-center mb-4 shadow-xs">
+            <Target className="w-6 h-6" />
           </div>
-          <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5">
-            5 Cognitive Levels
+          <h3 className="font-bold text-base text-[#17172D] mb-1.5">
+            25 Procedural Archetypes
           </h3>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-            Tests Recall, Conceptual Understanding, Real Application, Analysis, and Exam-Style Reasoning.
+          <p className="text-xs sm:text-sm text-[#666A83] leading-relaxed">
+            Zero duplicate calculations. Every question requires a genuinely distinct mathematical or reasoning task.
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
-            <Languages className="w-5 h-5" />
+        <div className="p-6 rounded-[22px] bg-white border border-[#DFE1F0] shadow-resting hover:shadow-raised hover:-translate-y-1 transition-all">
+          <div className="w-12 h-12 rounded-2xl bg-[#EEEEFF] text-[#4938C8] flex items-center justify-center mb-4 shadow-xs">
+            <Languages className="w-6 h-6" />
           </div>
-          <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5">
+          <h3 className="font-bold text-base text-[#17172D] mb-1.5">
             Multilingual Adaptation
           </h3>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+          <p className="text-xs sm:text-sm text-[#666A83] leading-relaxed">
             Watch in any language and study in English, हिन्दी, ગુજરાતી, or Español with technical terms preserved.
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4">
-            <GraduationCap className="w-5 h-5" />
+        <div className="p-6 rounded-[22px] bg-white border border-[#DFE1F0] shadow-resting hover:shadow-raised hover:-translate-y-1 transition-all">
+          <div className="w-12 h-12 rounded-2xl bg-[#EEEEFF] text-[#4938C8] flex items-center justify-center mb-4 shadow-xs">
+            <GraduationCap className="w-6 h-6" />
           </div>
-          <h3 className="font-bold text-base text-slate-900 dark:text-white mb-1.5">
-            Adaptive Learning Mode
+          <h3 className="font-bold text-base text-[#17172D] mb-1.5">
+            Teacher Correction Review
           </h3>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-            Breaks down performance by concept, explains weak areas, and generates fresh practice scenarios.
+          <p className="text-xs sm:text-sm text-[#666A83] leading-relaxed">
+            Step-by-step verified derivations, TRUE/FALSE answer status, and common student mistake diagnoses.
           </p>
         </div>
       </div>
     </div>
   );
 };
+

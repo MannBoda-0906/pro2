@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, BookOpen, Clock, Layers, Sparkles } from 'lucide-react';
+import { CheckCircle2, BookOpen, Clock, Sparkles } from 'lucide-react';
 import { TopicCoverageReport } from '../../types';
 
 interface TopicCoverageReportCardProps {
@@ -18,42 +18,42 @@ export const TopicCoverageReportCard: React.FC<TopicCoverageReportCardProps> = (
   }
 
   return (
-    <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950 border border-slate-200/80 dark:border-slate-800 shadow-sm mb-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-brand-100 dark:bg-brand-950 text-brand-600 dark:text-brand-400 flex items-center justify-center shrink-0">
-            <BookOpen className="w-4 h-4" />
+    <div className="p-6 sm:p-7 rounded-3xl bg-white border border-[#DFE1F0] shadow-resting mb-6 animate-fade-in hover:shadow-raised transition-all duration-300">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-[#DFE1F0]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-[#EEEEFF] text-[#4938C8] flex items-center justify-center shrink-0 shadow-xs">
+            <BookOpen className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-              What this quiz covers
+            <h3 className="text-base sm:text-lg font-bold text-[#17172D] tracking-tight">
+              Topic & Concept Coverage Map
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-[#666A83]">
               {report.summaryText || `${totalQuestions} questions covering ${report.coveredConcepts.length} major concepts`}
             </p>
           </div>
         </div>
 
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 self-start sm:self-auto">
-          <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+        <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#EEEEFF] border border-[#DFE1F0] text-[#4938C8] shadow-xs self-start sm:self-auto">
+          <Sparkles className="w-3.5 h-3.5 text-[#4938C8]" />
           <span>Grounded in Lesson Concepts</span>
         </span>
       </div>
 
       {/* Concept Checklist */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {report.coveredConcepts.map((concept, idx) => (
           <div
             key={idx}
-            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800/80 flex items-start justify-between gap-2 text-xs"
+            className="p-3.5 rounded-2xl bg-[#F8F9FD] border border-[#DFE1F0] flex items-start justify-between gap-2.5 text-xs hover:border-[#5B46E8]/40 hover:bg-white transition-all duration-200 shadow-xs"
           >
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-200 leading-snug">
+                <p className="font-semibold text-[#17172D] leading-snug">
                   {concept.name}
                 </p>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-medium">
+                <span className="text-[10px] text-[#666A83] uppercase tracking-wider font-semibold">
                   {concept.importance}
                 </span>
               </div>
@@ -63,10 +63,10 @@ export const TopicCoverageReportCard: React.FC<TopicCoverageReportCardProps> = (
               <button
                 type="button"
                 onClick={() => onSeek(concept.timestampSeconds!)}
-                className="inline-flex items-center gap-1 text-[10px] text-brand-600 dark:text-brand-400 hover:underline shrink-0 bg-brand-50 dark:bg-brand-950/60 px-1.5 py-0.5 rounded"
+                className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#4938C8] hover:bg-[#4938C8] hover:text-white shrink-0 bg-[#EEEEFF] px-2 py-1 rounded-lg transition-colors"
                 title={`Jump to ${concept.timestamp} in video`}
               >
-                <Clock className="w-2.5 h-2.5" />
+                <Clock className="w-3 h-3" />
                 <span>{concept.timestamp}</span>
               </button>
             )}
