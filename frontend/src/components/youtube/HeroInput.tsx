@@ -19,6 +19,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { DemoSample } from '../../types';
+import { VideoIdentity } from '../../utils/videoIdentity';
 
 export interface HeroInputProps {
   onProcessUrl: (url: string, options?: { language?: string; difficulty?: 'easy' | 'medium' | 'hard'; count?: number }) => void;
@@ -88,6 +89,7 @@ export const HeroInput: React.FC<HeroInputProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setInputError(null);
 
     const trimmed = url.trim();
@@ -96,16 +98,8 @@ export const HeroInput: React.FC<HeroInputProps> = ({
       return;
     }
 
-    const isValidYouTube =
-      trimmed.includes('youtube.com/watch') ||
-      trimmed.includes('youtu.be/') ||
-      trimmed.includes('youtube.com/embed') ||
-      trimmed.includes('youtube.com/shorts') ||
-      trimmed.includes('youtube.com/live') ||
-      trimmed.includes('music.youtube.com') ||
-      /^[a-zA-Z0-9_-]{11}$/.test(trimmed);
-
-    if (!isValidYouTube) {
+    const canonicalId = VideoIdentity.parseCanonicalVideoId(trimmed);
+    if (!canonicalId) {
       setInputError('Please enter a valid YouTube link (e.g. https://www.youtube.com/watch?v=... or https://youtu.be/...).');
       return;
     }

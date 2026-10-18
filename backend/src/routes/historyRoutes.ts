@@ -12,5 +12,9 @@ historyRouter.post('/', HistoryController.saveHistory);
 // GET /api/history/:id - get single item
 historyRouter.get('/:id', HistoryController.getHistoryById);
 
+// DELETE /api/history - clear all history
+historyRouter.delete('/', HistoryController.clearAllHistory);
+
 // DELETE /api/history/:id - delete item
 historyRouter.delete('/:id', HistoryController.deleteHistoryItem);
+

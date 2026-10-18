@@ -156,18 +156,7 @@ export class ConceptAnalysisEngine {
     }
 
     if (!rawQuestions || rawQuestions.length < 25) {
-      const specializedQuiz = CurriculumKnowledgeBank.getSpecialized25Quiz({
-        title,
-        difficulty,
-        langCode: targetLang.code,
-        count: 25
-      });
-
-      if (specializedQuiz && specializedQuiz.questions.length >= 25) {
-        rawQuestions = specializedQuiz.questions;
-      } else {
-        rawQuestions = this.synthesize25QuestionsLocally(knowledgeMap, blueprint, targetLang.code);
-      }
+      rawQuestions = this.synthesize25QuestionsLocally(knowledgeMap, blueprint, targetLang.code);
     }
 
     // STEP 12 - 17: Multi-Phase Question Validation & Refinement
@@ -194,7 +183,7 @@ export class ConceptAnalysisEngine {
     }
 
     // STEP 19: Build Topic Coverage Report & Package Final Quiz
-    const legacyConceptMap = CurriculumKnowledgeBank.getSpecializedConceptMap(title, videoId) || {
+    const legacyConceptMap = {
       mainTopic: knowledgeMap.mainTopic,
       subjectCategory: knowledgeMap.subject.toLowerCase() as any,
       subtopics: knowledgeMap.subtopics,
@@ -209,7 +198,7 @@ export class ConceptAnalysisEngine {
         formula: c.formula,
         conditionsOrLimitations: c.conditions,
         commonMisconceptions: [],
-        examImportance: c.importance === 'essential' ? 'essential' : 'important',
+        examImportance: (c.importance === 'high' ? 'essential' : (c.importance === 'low' ? 'supporting' : 'important')) as 'essential' | 'important' | 'supporting',
         approximateTimestamp: c.timestampSeconds
           ? { startSeconds: c.timestampSeconds, timestamp: c.timestamp || '01:00' }
           : undefined
@@ -1711,35 +1700,7 @@ Return ONLY valid JSON without markdown wrapping.`;
     knowledgeMap: ConceptKnowledgeMap,
     langCode: 'en' | 'hi' | 'gu' | 'es'
   ): QuizQuestion {
-    // 1. Check CurriculumKnowledgeBank for pre-verified problem
-    const preverified = CurriculumKnowledgeBank.getPreverifiedQuestionByArchetype({
-      title: knowledgeMap.mainTopic,
-      archetypeId: slot.archetypeId,
-      langCode
-    });
-
-    if (preverified) {
-      return {
-        ...preverified,
-        id: `q_${slot.questionIndex}`,
-        concept: slot.concept,
-        conceptName: slot.concept,
-        subtopic: slot.subtopic,
-        archetypeId: slot.archetypeId,
-        procedureSignature: slot.procedureSignature,
-        unknownType: slot.unknownType,
-        requiredOperation: slot.requiredOperation,
-        cognitiveTask: slot.cognitiveTask,
-        scenarioType: slot.scenarioType,
-        numericalOrTheory: slot.numericalOrTheory,
-        questionCategory: slot.questionCategory,
-        difficulty: slot.difficulty,
-        cognitiveLevel: slot.cognitiveLevel,
-        correctMethod: preverified.correctMethod || slot.solvingMethodDescription
-      };
-    }
-
-    // 2. Algorithmic dynamic synthesis matching slot specifications
+    // 1. Algorithmic dynamic synthesis matching slot specifications
     const fallbackList = this.synthesize25QuestionsLocally(knowledgeMap, [slot], langCode);
     if (fallbackList.length > 0) {
       return {
@@ -1877,11 +1838,6 @@ Return ONLY valid JSON matching this schema:
     transcript: TranscriptSegment[],
     videoId?: string
   ): ConceptKnowledgeMap {
-    const specialized = CurriculumKnowledgeBank.getSpecializedConceptKnowledgeMap(title, videoId);
-    if (specialized) {
-      return specialized;
-    }
-
     const cleanTitle = title.replace(/\|.*$/g, '').replace(/-.*$/g, '').trim();
 
     return {
@@ -1957,15 +1913,7 @@ Return ONLY valid JSON matching this schema:
     blueprint: QuizBlueprintItem[],
     langCode: 'en' | 'hi' | 'gu' | 'es'
   ): QuizQuestion[] {
-    const specialized = CurriculumKnowledgeBank.getSpecialized25Quiz({
-      title: knowledgeMap.mainTopic,
-      langCode,
-      count: 25
-    });
-
-    if (specialized && specialized.questions.length >= 25) {
-      return specialized.questions;
-    }
+    const questions: QuizQuestion[] = [];
 
     // Dynamic generation matching the blueprint
     return blueprint.map((bp, idx) => {

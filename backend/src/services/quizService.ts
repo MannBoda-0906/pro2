@@ -15,6 +15,8 @@ export interface GenerateQuizParams {
   apiKey?: string;
   skipCache?: boolean;
   analysisSessionId?: string;
+  generationAttemptId?: string;
+  generationJobId?: string;
   transcriptHash?: string;
 }
 

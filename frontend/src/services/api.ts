@@ -127,6 +127,7 @@ export class ApiService {
    */
   static async generateQuiz(params: {
     videoId: string;
+    sourceUrl?: string;
     videoUrl?: string;
     title: string;
     transcript: TranscriptSegment[];
@@ -134,6 +135,7 @@ export class ApiService {
     count?: number;
     language?: string;
     analysisSessionId?: string;
+    generationAttemptId?: string;
     signal?: AbortSignal;
   }): Promise<QuizData> {
     const { signal, ...bodyParams } = params;
@@ -146,7 +148,17 @@ export class ApiService {
 
     const data = await res.json();
     if (!res.ok || !data.success || data.ok === false) {
-      throw new Error(getErrorMessage(data.error || data || 'Failed to generate quiz.'));
+      const errorPayload = data.error || data || {};
+      const errorMsg = getErrorMessage(errorPayload);
+      const error: any = new Error(errorMsg);
+      error.code = errorPayload.code || data.code || 'UNKNOWN_ERROR';
+      error.stage = errorPayload.stage || data.stage;
+      error.retryable = typeof errorPayload.retryable === 'boolean' ? errorPayload.retryable : (typeof data.retryable === 'boolean' ? data.retryable : true);
+      error.refId = errorPayload.refId || data.referenceId;
+      error.analysisSessionId = data.analysisSessionId || params.analysisSessionId;
+      error.generationAttemptId = data.generationAttemptId || params.generationAttemptId;
+      error.videoId = data.videoId || params.videoId;
+      throw error;
     }
     return data.quiz;
   }
@@ -255,15 +267,26 @@ export class ApiService {
   }
 
   /**
-   * Fetch history list
+   * Fetch history list with explicit cache-busting
    */
   static async fetchHistory(): Promise<HistoryItem[]> {
     try {
-      const res = await fetch(`${API_BASE}/history`);
+      const res = await fetch(`${API_BASE}/history?_t=${Date.now()}`, {
+        headers: getHeaders(),
+        cache: 'no-store'
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.history && Array.isArray(data.history)) {
-          return data.history;
+          // If server provided historyClearedAt, synchronize it
+          if (typeof data.historyClearedAt === 'number' && data.historyClearedAt > 0) {
+            StorageService.setHistoryClearedAt(data.historyClearedAt);
+          }
+          const clearedAt = StorageService.getHistoryClearedAt();
+          const validHistory = clearedAt > 0
+            ? data.history.filter((h: HistoryItem) => new Date(h.createdAt || 0).getTime() >= clearedAt)
+            : data.history;
+          return validHistory;
         }
       }
     } catch {
@@ -280,10 +303,32 @@ export class ApiService {
       await fetch(`${API_BASE}/history/${id}`, {
         method: 'DELETE',
         headers: getHeaders(),
+        cache: 'no-store'
       });
     } catch {
       // Ignore network fail, delete locally
     }
     StorageService.deleteHistoryItem(id);
+  }
+
+  /**
+   * Permanently clears all history records and cached analysis on the backend
+   */
+  static async clearAllHistory(): Promise<{ success: boolean; clearedAt: number; itemsRemoved: number }> {
+    const res = await fetch(`${API_BASE}/history`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+      cache: 'no-store'
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) {
+      throw new Error(data?.error?.message || 'Failed to clear history on backend server.');
+    }
+
+    if (typeof data.clearedAt === 'number') {
+      StorageService.setHistoryClearedAt(data.clearedAt);
+    }
+    return data;
   }
 }

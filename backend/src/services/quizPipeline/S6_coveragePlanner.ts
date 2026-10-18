@@ -20,14 +20,22 @@ export class S6_CoveragePlanner {
     // Sensible Content Gate: If video has 0 allowed concepts, it contains no teachable content.
     if (!allowedIds || allowedIds.length === 0) {
       const err: any = new Error(
-        `INSUFFICIENT_EDUCATIONAL_CONTENT: Transcript was analyzed, but 0 teachable academic concepts could be verified. Minimum 1 deeply covered concept is required.`
+        "We couldn't identify enough concepts. Try a video with more spoken explanation."
       );
-      err.code = 'INSUFFICIENT_EDUCATIONAL_CONTENT';
-      err.stage = 'coverage_planning';
+      err.code = 'EXTRACTION_FAILED';
+      err.stage = 'concept_extraction';
+      err.retryable = false;
       throw err;
     }
 
-    let activeConceptIds = [...allowedIds];
+    // Concept Evidence Gate: Drop any concept with no evidence from current video before blueprinting
+    let activeConceptIds = (allowedIds || []).filter(id => {
+      const cls = knowledgeMap.coverageClassifications[id];
+      const concept = knowledgeMap.concepts[id];
+      const hasClsEvidence = cls && cls.status !== 'NOT_COVERED' && Array.isArray(cls.evidence) && cls.evidence.length > 0;
+      const hasConceptEvidence = concept && Array.isArray(concept.evidence) && concept.evidence.length > 0;
+      return hasClsEvidence || hasConceptEvidence;
+    });
     const mergedMinorConcepts: Array<{ mergedInto: string; originalConcepts: string[] }> = [];
 
     // If > 25 concepts: merge related minor concepts into subconcept groups

@@ -351,9 +351,11 @@ async function runStep6Tests() {
 
     // Verify all 10 questions are well-formed
     for (const q of quiz.questions) {
-      assert(q.options.length >= 2, `Question ${q.id} must have options, got ${q.options.length}`);
+      if (q.questionFormat !== 'fill_blank') {
+        assert(q.options.length >= 2, `Question ${q.id} must have options, got ${q.options.length}`);
+        assert(q.options.includes(q.correctAnswer), `Question ${q.id} options must include correctAnswer ("${q.correctAnswer}")`);
+      }
       assert(!!q.correctAnswer, `Question ${q.id} missing correctAnswer`);
-      assert(q.options.includes(q.correctAnswer), `Question ${q.id} options must include correctAnswer ("${q.correctAnswer}")`);
       assert(!!q.conceptId, `Question ${q.id} missing conceptId`);
       assert(!!q.explanation, `Question ${q.id} missing explanation`);
     }

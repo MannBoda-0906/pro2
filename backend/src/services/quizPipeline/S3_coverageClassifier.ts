@@ -68,20 +68,24 @@ export class S3_CoverageClassifier {
         isAllowedForQuiz = true;
       } else if (segmentCount === 1) {
         // Evaluate if segment has substantial instructional density (> 60 chars)
-        const isDense = matchingSegments[0]?.text.length > 60;
+        const isDense = matchingSegments[0]?.text.length > 40;
         if (isDense) {
           status = 'PARTIALLY_COVERED';
-          isAllowedForQuiz = true; // Allowed with sufficient evidence
+          isAllowedForQuiz = true;
         } else {
           status = 'MENTIONED_ONLY';
           isAllowedForQuiz = false;
           exclusionReason = 'Concept was only mentioned briefly without instructional depth.';
         }
+      } else if ((hasFormulas || hasDefs || hasLaws) && segmentCount > 0) {
+        // Grounded in structured evidence from the lecture with matching segments
+        status = 'MOSTLY_COVERED';
+        isAllowedForQuiz = true;
       } else {
-        // 0 matching segments
+        // 0 matching segments in transcript
         status = 'NOT_COVERED';
         isAllowedForQuiz = false;
-        exclusionReason = 'Concept was not taught in this video lecture.';
+        exclusionReason = 'Concept has no verifiable spoken evidence in this video transcript.';
       }
 
       classifications[concept.id] = {

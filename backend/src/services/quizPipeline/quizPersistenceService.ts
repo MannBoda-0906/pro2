@@ -36,8 +36,11 @@ export class QuizPersistenceService {
     language: string;
     difficulty: string;
     count: number;
-  }): string {
+  }): string | null {
     const { videoId, transcriptHash, language, difficulty, count } = params;
+    if (!videoId || videoId === 'video' || !transcriptHash || transcriptHash === 'empty_transcript_hash') {
+      return null;
+    }
     return `${videoId}:${transcriptHash}:${this.ANALYSIS_VERSION}:${language.toLowerCase()}:${this.QUIZ_VERSION}:${difficulty.toLowerCase()}:${count}`;
   }
 
@@ -61,17 +64,23 @@ export class QuizPersistenceService {
       difficulty = 'medium'
     } = params;
 
+    const specificKey = this.buildCacheKey({
+      videoId,
+      transcriptHash,
+      language,
+      difficulty,
+      count
+    });
+
+    if (!specificKey) {
+      console.warn(`[QuizPersistenceService] Skipping cache for invalid videoId='${videoId}' or empty transcriptHash`);
+      return;
+    }
+
     try {
       this.init();
       const raw = fs.readFileSync(CACHE_FILE, 'utf-8');
       const cache = JSON.parse(raw);
-      const specificKey = this.buildCacheKey({
-        videoId,
-        transcriptHash,
-        language,
-        difficulty,
-        count
-      });
 
       cache[specificKey] = {
         cachedAt: new Date().toISOString(),
@@ -111,18 +120,23 @@ export class QuizPersistenceService {
       difficulty = 'medium'
     } = params;
 
+    const specificKey = this.buildCacheKey({
+      videoId,
+      transcriptHash,
+      language,
+      difficulty,
+      count
+    });
+
+    if (!specificKey) {
+      return null;
+    }
+
     try {
       this.init();
       if (!fs.existsSync(CACHE_FILE)) return null;
       const raw = fs.readFileSync(CACHE_FILE, 'utf-8');
       const cache = JSON.parse(raw);
-      const specificKey = this.buildCacheKey({
-        videoId,
-        transcriptHash,
-        language,
-        difficulty,
-        count
-      });
 
       const entry = cache[specificKey];
       if (!entry || !entry.quiz) {
@@ -184,6 +198,18 @@ export class QuizPersistenceService {
       fs.writeFileSync(ATTEMPTS_FILE, JSON.stringify(attempts.slice(0, 100), null, 2), 'utf-8');
     } catch (err) {
       console.warn('[QuizPersistenceService] Failed to save attempt:', err);
+    }
+  }
+
+  /**
+   * Clears all recorded quiz attempts
+   */
+  public static clearAttempts(): void {
+    try {
+      this.init();
+      fs.writeFileSync(ATTEMPTS_FILE, JSON.stringify([], null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('[QuizPersistenceService] Failed to clear attempts:', err);
     }
   }
 }

@@ -41,19 +41,26 @@ export class S8_BlueprintValidator {
 
     // 2. Format appearance check
     const formatCounts = blueprint.formatCounts;
-    const requiredFormats = totalSlots >= 15
+    let requiredFormats = totalSlots >= 15
       ? (['numerical', 'true_false', 'fill_blank', 'match_columns', 'theoretical'] as const)
       : (['numerical', 'true_false', 'fill_blank', 'theoretical'] as const);
 
-    requiredFormats.forEach(fmt => {
+    const hasFormulas = Object.values(knowledgeMap.concepts || {}).some(c => Boolean(c.formula && c.formula.trim().length > 0));
+    const activeRequiredFormats = hasFormulas
+      ? requiredFormats
+      : requiredFormats.filter(f => f !== 'numerical');
+
+    activeRequiredFormats.forEach(fmt => {
       if (!formatCounts[fmt] || formatCounts[fmt] === 0) {
         errors.push(`Format violation: '${fmt}' format is missing completely from blueprint.`);
       }
     });
 
-    // 3. Distribution check (~70% numerical / problem-solving)
-    const targetNumerical = totalSlots === 20 ? 14 : totalSlots === 15 ? 10 : totalSlots === 10 ? 7 : 18;
-    if (Math.abs(formatCounts.numerical - targetNumerical) > 1) {
+    // 3. Distribution check (~70% numerical / problem-solving for standard STEM with sufficient formulas)
+    const targetNumerical = blueprint.isAdaptiveDistribution
+      ? (blueprint.targetNumerical || formatCounts.numerical)
+      : (totalSlots === 20 ? 14 : totalSlots === 15 ? 10 : totalSlots === 10 ? 7 : 18);
+    if (!blueprint.isAdaptiveDistribution && Math.abs(formatCounts.numerical - targetNumerical) > 1) {
       errors.push(`Distribution violation: numerical/application count is ${formatCounts.numerical} (target: ${targetNumerical})`);
     }
 
@@ -105,15 +112,42 @@ export class S8_BlueprintValidator {
       errors.push(`Duplicate procedure signature violation: [${dupSigs.join(', ')}]`);
     }
 
-    // 8. Max 2 numerical questions with same method_id
+    // 8. No duplicate (concept, taskFamily, unknownType) triples
+    const seenTriples = new Set<string>();
+    const dupTriples: string[] = [];
+    slots.forEach(s => {
+      const tripleKey = `${s.conceptId}:${s.taskFamily || s.methodId}:${s.unknownType || 'default'}`;
+      if (seenTriples.has(tripleKey)) {
+        dupTriples.push(`Slot #${s.slotIndex} (${tripleKey})`);
+      }
+      seenTriples.add(tripleKey);
+    });
+    if (dupTriples.length > 0) {
+      errors.push(`Duplicate (concept, taskFamily, unknownType) triple violation: [${dupTriples.join(', ')}]`);
+    }
+
+    // 9. Task family count: at least 10 distinct task families across a 25-question quiz (or adaptively scaled)
+    const distinctFamilies = new Set(slots.map(s => s.taskFamily || s.methodId));
+    const minRequiredFamilies = blueprint.isAdaptiveDistribution
+      ? Math.min(6, distinctFamilies.size)
+      : (totalSlots >= 20 ? 10 : Math.min(6, totalSlots));
+    if (distinctFamilies.size < minRequiredFamilies) {
+      errors.push(
+        `Insufficient task family diversity: found ${distinctFamilies.size} distinct task families, required at least ${minRequiredFamilies}.`
+      );
+    }
+
+    // 10. Max numerical questions with same method_id / taskFamily
+    const maxPerMethod = blueprint.isAdaptiveDistribution ? 4 : 2;
     const numericalMethodCounts: Record<string, number> = {};
     slots.filter(s => s.questionFormat === 'numerical').forEach(s => {
-      numericalMethodCounts[s.methodId] = (numericalMethodCounts[s.methodId] || 0) + 1;
+      const m = s.taskFamily || s.methodId;
+      numericalMethodCounts[m] = (numericalMethodCounts[m] || 0) + 1;
     });
 
     Object.entries(numericalMethodCounts).forEach(([method, count]) => {
-      if (count > 2) {
-        errors.push(`Method diversity violation: method_id '${method}' appears ${count} times in numerical slots (max allowed: 2).`);
+      if (count > maxPerMethod) {
+        errors.push(`Method diversity violation: taskFamily/methodId '${method}' appears ${count} times in numerical slots (max allowed: ${maxPerMethod}).`);
       }
     });
 

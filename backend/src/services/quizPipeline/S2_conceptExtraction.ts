@@ -21,12 +21,13 @@ export class S2_ConceptExtraction {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           const prompt = `You are an elite academic curriculum designer.
-Extract the concept hierarchy (with IDs C1, C2, C3...) strictly from what was ACTUALLY taught in this lecture evidence.
-CRITICAL RULE: DO NOT include textbook chapter topics that the video did not teach!
-The transcript may be in English, Hindi, Gujarati, Spanish, or another language. Extract the concepts accurately regardless of the language.
+Extract the concept hierarchy (with IDs C1, C2, C3...) strictly from what was ACTUALLY taught in this spoken transcript excerpt.
+CRITICAL RULES:
+1. Extract concepts ONLY from what is spoken in the transcript text below. NEVER extract concepts from video titles or textbook chapters that are not in the spoken content!
+2. Every concept must have real instructional evidence in the transcript.
+3. The transcript may be in English, Hindi, Gujarati, Spanish, or another language. Extract the concepts accurately regardless of the language.
 
-SUBJECT: "${evidence.subject}"
-CHAPTER / TITLE: "${evidence.chapter}"
+SUBJECT HINT: "${evidence.subject}" (hint only, not a source of concepts)
 DEFINITIONS TAUGHT: ${JSON.stringify(evidence.definitions.map(d => d.term))}
 LAWS TAUGHT: ${JSON.stringify(evidence.laws.map(l => l.name))}
 FORMULAS TAUGHT: ${JSON.stringify(evidence.formulas.map(f => f.name))}
@@ -41,7 +42,7 @@ Return ONLY a valid JSON array of concepts without markdown fences:
     "id": "C1",
     "name": "Full descriptive concept title taught in video",
     "subconcepts": ["subconcept 1", "subconcept 2"],
-    "chapter": "${evidence.chapter}",
+    "chapter": "${evidence.topic || 'Lecture Content'}",
     "orderIndex": 1
   }
 ]`;
@@ -94,12 +95,22 @@ Return ONLY a valid JSON array of concepts without markdown fences:
   }
 
   private static sanitizeConceptList(items: ConceptHierarchyItem[], chapter: string): ConceptHierarchyItem[] {
-    return items.map((c, idx) => ({
-      id: c.id && c.id.startsWith('C') ? c.id : `C${idx + 1}`,
-      name: c.name || `Concept ${idx + 1}`,
-      subconcepts: Array.isArray(c.subconcepts) && c.subconcepts.length > 0 ? c.subconcepts : [c.name],
+    const valid = items.filter(c => {
+      const name = (c.name || '').trim();
+      return (
+        name.length >= 3 &&
+        /\p{L}/u.test(name) &&
+        !/^\d+$/.test(name) &&
+        !['unknown', 'undefined', 'null'].includes(name.toLowerCase())
+      );
+    });
+
+    return valid.map((c, idx) => ({
+      id: `C${idx + 1}`,
+      name: c.name.trim(),
+      subconcepts: Array.isArray(c.subconcepts) && c.subconcepts.length > 0 ? c.subconcepts : [c.name.trim()],
       chapter: c.chapter || chapter,
-      orderIndex: typeof c.orderIndex === 'number' ? c.orderIndex : idx + 1
+      orderIndex: idx + 1
     }));
   }
 
@@ -111,10 +122,19 @@ Return ONLY a valid JSON array of concepts without markdown fences:
     const concepts: ConceptHierarchyItem[] = [];
     let idCounter = 1;
 
-    // Helper to add concept without duplicate names
+    // Helper to add concept without duplicate names and sanitize noise
     const addConcept = (name: string, subconcepts: string[]) => {
       const trimmed = name.trim();
-      if (!trimmed || concepts.some(c => c.name.toLowerCase() === trimmed.toLowerCase())) return;
+      if (
+        !trimmed ||
+        trimmed.length < 3 ||
+        !/\p{L}/u.test(trimmed) ||
+        /^\d+$/.test(trimmed) ||
+        ['and', 'or', 'the', 'is', 'for', 'let', 'then', 'so', 'we'].includes(trimmed.toLowerCase()) ||
+        concepts.some(c => c.name.toLowerCase() === trimmed.toLowerCase())
+      ) {
+        return;
+      }
       concepts.push({
         id: `C${idCounter}`,
         name: trimmed,
@@ -149,72 +169,34 @@ Return ONLY a valid JSON array of concepts without markdown fences:
       ]);
     });
 
-    // Physics: Center of Mass specific curriculum concepts ONLY if that is the actual video topic
-    const topicLower = (evidence.topic || '').toLowerCase();
-    const isExplicitCenterOfMass = topicLower.includes('center of mass') || topicLower.includes('centre of mass');
-    if (evidence.subject === 'Physics' && isExplicitCenterOfMass) {
-      if (!concepts.some(c => c.name.toLowerCase().includes('two-particle'))) {
-        addConcept('Two-Particle Center of Mass System', [
-          'Mass-Weighted Coordinate Formulation',
-          'Inverse Distance Ratio (m1*r1 = m2*r2)'
-        ]);
-      }
-      if (!concepts.some(c => c.name.toLowerCase().includes('three dimensions') || c.name.toLowerCase().includes('multi-particle'))) {
-        addConcept('Multi-Particle Discrete System in 3D', [
-          'Vector Center of Mass Coordinate Summation',
-          'Coordinate Decomposition (x_cm, y_cm, z_cm)'
-        ]);
-      }
-      if (!concepts.some(c => c.name.toLowerCase().includes('external force') || c.name.toLowerCase().includes('internal force'))) {
-        addConcept('Center of Mass Motion and External Force Invariance', [
-          'Zero Net External Force & Velocity Invariance',
-          'Cancellation of Mutual Internal Forces'
-        ]);
-      }
-      if (!concepts.some(c => c.name.toLowerCase().includes('outside the body') || c.name.toLowerCase().includes('geometric symmetry'))) {
-        addConcept('Geometric Symmetry & Non-Material Center of Mass', [
-          'Hollow Bodies and Annular Ring Center of Mass',
-          'Shift of Center of Mass upon Mass Redistribution'
-        ]);
+    // 4. Grounded in transcript segment key phrases if fewer than 3 concepts
+    if (concepts.length < 3 && segments.length > 0) {
+      const numSections = Math.min(5, Math.max(1, segments.length));
+      const step = Math.max(1, Math.floor(segments.length / numSections));
+      for (let s = 0; s < numSections; s++) {
+        const segIndex = Math.min(s * step, segments.length - 1);
+        const seg = segments[segIndex];
+        const words = seg.text.replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(w => w.length > 2);
+        if (words.length >= 2) {
+          const namePart = words.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+          if (namePart.length >= 3 && !concepts.some(c => c.name.toLowerCase() === namePart.toLowerCase())) {
+            addConcept(namePart, [
+              `Instructional explanation at ${Math.floor(seg.start / 60)}m`,
+              `Core principles and applications of ${namePart}`
+            ]);
+          }
+        }
       }
     }
 
-    // Biology: Photosynthesis specific curriculum concepts ONLY if that is the actual video topic
-    const isExplicitPhotosynthesis = topicLower.includes('photosynthesis');
-    if (evidence.subject === 'Biology' && isExplicitPhotosynthesis) {
-      if (!concepts.some(c => c.name.toLowerCase().includes('light reactions') || c.name.toLowerCase().includes('photosystem'))) {
-        addConcept('Light-Dependent Reactions and Photosystems', [
-          'Photosystem II Water Photolysis',
-          'Electron Transport & Proton Gradient Generation'
-        ]);
-      }
-      if (!concepts.some(c => c.name.toLowerCase().includes('calvin cycle') || c.name.toLowerCase().includes('stroma'))) {
-        addConcept('Calvin Cycle and Carbon Fixation', [
-          'RuBisCO Enzymatic Carbon Fixation',
-          'Triose Phosphate Synthesis & RuBP Regeneration'
-        ]);
-      }
-      if (!concepts.some(c => c.name.toLowerCase().includes('chloroplast anatomy') || c.name.toLowerCase().includes('thylakoid'))) {
-        addConcept('Chloroplast Structural Compartmentalization', [
-          'Thylakoid Membrane vs Stroma Functional Division',
-          'Pigment Complexes and Chlorophyll Absorbance'
-        ]);
-      }
-      if (!concepts.some(c => c.name.toLowerCase().includes('limiting factors') || c.name.toLowerCase().includes('stoichiometry'))) {
-        addConcept('Photosynthetic Rate Limiting Factors & Stoichiometry', [
-          'Light Intensity, CO2 Concentration, and Temperature Limits',
-          'Overall Stoichiometric Balance (6CO2 + 6H2O -> C6H12O6 + 6O2)'
-        ]);
-      }
-    }
+    // Filter to ensure every concept has at least one verifiable mention or related term in the transcript text
+    const grounded = concepts.filter(c => {
+      const tokens = c.name.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+      if (tokens.length === 0) return fullText.includes(c.name.toLowerCase());
+      return tokens.some(t => fullText.includes(t));
+    });
 
-    // Fallback if very few concepts extracted
-    if (concepts.length < 3) {
-      addConcept(`${evidence.topic} Fundamentals`, [`Core Principles of ${evidence.topic}`]);
-      addConcept(`${evidence.topic} Mechanisms`, [`Functional Processes of ${evidence.topic}`]);
-      addConcept(`${evidence.topic} Applications & Problem Solving`, [`Analytical Scenarios of ${evidence.topic}`]);
-    }
-
-    return concepts;
+    return grounded.length > 0 ? grounded : concepts;
   }
 }
+

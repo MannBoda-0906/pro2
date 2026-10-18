@@ -110,6 +110,7 @@ export interface QuestionValidationRecord {
 export interface QuizQuestion {
   id: string;
   analysisSessionId?: string;
+  generationAttemptId?: string;
   videoId?: string;
   slotIndex?: number;
   type: QuestionType;
@@ -120,6 +121,7 @@ export interface QuizQuestion {
   concept?: string;
   conceptName?: string;
   conceptId?: string;
+  taskFamily?: string;
   methodId?: string;
   problemArchetype?: string;
   archetypeId?: string;
@@ -309,6 +311,9 @@ export interface TopicCoverageReport {
 export interface QuizData {
   id?: string;
   analysisSessionId?: string;
+  generationAttemptId?: string;
+  generationJobId?: string;
+  isValidated?: boolean;
   videoId?: string;
   transcriptHash?: string;
   analysisVersion?: number | string;
@@ -321,6 +326,8 @@ export interface QuizData {
   language?: string;
   conceptMap?: ConceptMap;
   conceptKnowledgeMap?: ConceptKnowledgeMap;
+  persistedKnowledgeMap?: any;
+  quizBlueprint?: any;
   topicCoverageReport?: TopicCoverageReport;
   blueprint?: QuizBlueprintItem[];
   questions: QuizQuestion[];
@@ -369,6 +376,8 @@ export interface HistoryItem {
   summary?: SummaryData;
   quiz?: QuizData;
   flashcards?: Flashcard[];
+  transcript?: TranscriptSegment[];
+  rawText?: string;
 }
 
 export interface DemoSample {
@@ -425,3 +434,53 @@ export interface QuizSubmissionResult {
     timestampSeconds?: number;
   }>;
 }
+
+export type GenerationJobStatus =
+  | 'QUEUED'
+  | 'FETCHING_VIDEO'
+  | 'FETCHING_TRANSCRIPT'
+  | 'ANALYZING_VIDEO'
+  | 'EXTRACTING_CONCEPTS'
+  | 'UNDERSTANDING_CONCEPTS'
+  | 'BUILDING_CONCEPT_MAP'
+  | 'BUILDING_COVERAGE_PLAN'
+  | 'BUILDING_QUESTION_BLUEPRINT'
+  | 'GENERATING_QUESTIONS'
+  | 'VALIDATING_QUESTIONS'
+  | 'REPAIRING_QUESTIONS'
+  | 'FINAL_VALIDATION'
+  | 'SAVING_QUIZ'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'STALLED';
+
+export interface GenerationJob {
+  generationJobId: string;
+  analysisSessionId: string;
+  generationAttemptId: string;
+  videoId: string;
+  sourceUrl: string;
+  status: GenerationJobStatus;
+  stage: string;
+  stageDescription: string;
+  progress: number;
+  totalQuestionCount: number;
+  validQuestionCount: number;
+  invalidQuestionCount: number;
+  repairAttemptsCount: number;
+  conceptCount: number;
+  allowedConceptCount: number;
+  createdAt: number;
+  updatedAt: number;
+  error?: {
+    code: string;
+    stage: string;
+    message: string;
+    refId?: string;
+    retryable: boolean;
+  } | null;
+  quiz?: QuizData | null;
+  metadata?: any;
+}
+

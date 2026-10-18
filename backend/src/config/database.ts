@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 
 export const DATA_DIR = path.resolve(__dirname, '../../data');
 export const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
+export const HISTORY_CLEARED_FILE = path.join(DATA_DIR, 'history_cleared.json');
 
 export function initDatabase(): void {
   try {

@@ -50,9 +50,15 @@ export class S11_QualityGate {
 
     // 2. All required formats present and distribution within limits
     const formatsSeen = new Set(questions.map(q => q.questionFormat || q.type));
-    const requiredFormats = totalTarget >= 15
+    let requiredFormats = totalTarget >= 15
       ? ['numerical', 'true_false', 'fill_blank', 'match_columns', 'theoretical']
       : ['numerical', 'true_false', 'fill_blank', 'theoretical'];
+
+    const hasFormulas = Object.values(knowledgeMap.concepts || {}).some(c => Boolean(c.formula && c.formula.trim().length > 0));
+    if (!hasFormulas) {
+      requiredFormats = requiredFormats.filter(f => f !== 'numerical');
+    }
+
     const missingFormats = requiredFormats.filter(f => !formatsSeen.has(f as any));
     const checkAllFiveFormatsPresent = missingFormats.length === 0;
     if (!checkAllFiveFormatsPresent) {

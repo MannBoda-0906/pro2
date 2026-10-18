@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
-import { YouTubeService } from '../services/youtubeService.js';
-import { ChunkingService } from '../services/chunkingService.js';
 import { DEMO_VIDEOS } from '../services/demoData.js';
-import { TranscriptService } from '../services/transcriptService.js';
 import { VideoIdentity } from '../utils/videoIdentity.js';
+import { PipelineLogger } from '../utils/pipelineLogger.js';
+import { VideoAnalysisService, VideoAnalysisError } from '../services/videoAnalysisService.js';
 
 export class VideoController {
   static getDemos(_req: Request, res: Response): void {
@@ -21,168 +20,285 @@ export class VideoController {
     res.json({ success: true, demos });
   }
 
-  static async processVideo(req: Request, res: Response): Promise<void> {
+  /**
+   * Fetches video metadata separately (Stage 3).
+   * GET /api/videos/metadata/:id or POST /api/videos/metadata
+   */
+  static async getVideoMetadata(req: Request, res: Response): Promise<void> {
+    const rawId = req.params.id || req.body.url || req.body.videoId;
+    const sessionId = (typeof req.query.analysisSessionId === 'string' && req.query.analysisSessionId) ||
+      (typeof req.body?.analysisSessionId === 'string' && req.body.analysisSessionId) ||
+      VideoIdentity.createSessionId();
+
     try {
-      const { url, manualTranscript, demoId, language, analysisSessionId } = req.body;
-      const sessionId = (typeof analysisSessionId === 'string' && analysisSessionId.trim())
-        ? analysisSessionId.trim()
-        : VideoIdentity.createSessionId();
-
-      // Handle demo video request
-      if (demoId && DEMO_VIDEOS[demoId]) {
-        const demo = DEMO_VIDEOS[demoId];
-        const chunks = ChunkingService.splitTranscriptIntoChunks(demo.transcript);
-        const canonicalId = demo.id;
-        const resData = {
-          metadata: {
-            id: demo.id,
-            url: demo.url,
-            title: demo.title,
-            author: demo.author,
-            thumbnailUrl: demo.thumbnailUrl,
-            duration: demo.duration,
-            durationSeconds: demo.durationSeconds,
-            embedUrl: `https://www.youtube.com/embed/${demo.url.split('v=')[1] || 'k6U-i4gXka8'}`
-          },
-          transcript: demo.transcript,
-          rawText: demo.transcript.map(t => t.text).join(' '),
-          chunkCount: chunks.length,
-          source: 'demo'
-        };
-
-        res.json({
-          ok: true,
-          success: true,
-          analysisSessionId: sessionId,
-          videoId: canonicalId,
-          status: 'success',
-          data: resData,
-          ...resData
-        });
-        return;
-      }
-
-      if (!url || typeof url !== 'string') {
+      if (!rawId || typeof rawId !== 'string') {
         res.status(400).json({
           ok: false,
           success: false,
-          error: {
-            code: 'INVALID_URL',
-            message: 'Please provide a valid YouTube URL or video ID.',
-            stage: 'input_validation',
-            retryable: false
-          }
+          stage: 'VALIDATE_URL',
+          code: 'INVALID_YOUTUBE_URL',
+          message: 'Please provide a valid YouTube URL or video ID.'
         });
         return;
       }
 
-      const videoId = VideoIdentity.parseCanonicalVideoId(url) || YouTubeService.extractVideoId(url);
-      if (!videoId) {
-        res.status(400).json({
-          ok: false,
-          success: false,
-          error: {
-            code: 'INVALID_URL',
-            message: 'Invalid YouTube URL. Please provide a standard link (e.g. youtube.com/watch?v=... or youtu.be/...).',
-            stage: 'input_validation',
-            retryable: false
-          }
-        });
-        return;
-      }
-
-      const metadata = await YouTubeService.fetchMetadata(videoId, url);
-
-      // Handle user manual transcript override
-      if (manualTranscript && typeof manualTranscript === 'string' && manualTranscript.trim().length > 0) {
-        const transcriptSegments = TranscriptService.parseManualTranscript(manualTranscript);
-        const rawText = TranscriptService.segmentsToRawText(transcriptSegments);
-        const chunks = ChunkingService.splitTranscriptIntoChunks(transcriptSegments);
-
-        const resData = {
-          metadata,
-          transcript: transcriptSegments,
-          rawText,
-          chunkCount: chunks.length,
-          source: 'manual'
-        };
-
-        res.json({
-          ok: true,
-          success: true,
-          analysisSessionId: sessionId,
-          videoId,
-          status: 'success',
-          data: resData,
-          ...resData
-        });
-        return;
-      }
-
-      // Fetch authentic transcript via Robust CaptionService
-      const fetchResult = await YouTubeService.fetchTranscript(
-        videoId,
-        metadata.title,
-        metadata.author,
-        typeof language === 'string' ? language : 'en'
-      );
-
-      const cleanSegments = TranscriptService.cleanSegments(fetchResult.transcript);
-      const chunks = ChunkingService.splitTranscriptIntoChunks(cleanSegments);
-
-      const resData = {
-        metadata,
-        transcript: cleanSegments,
-        rawText: fetchResult.rawText,
-        languageCode: fetchResult.languageCode,
-        trackType: fetchResult.trackType,
-        chunkCount: chunks.length,
-        source: fetchResult.source
-      };
+      const videoId = VideoAnalysisService.extractVideoId(rawId);
+      const metadata = await VideoAnalysisService.fetchVideoMetadata(videoId, rawId);
 
       res.json({
         ok: true,
         success: true,
         analysisSessionId: sessionId,
         videoId,
+        metadata: {
+          videoId: metadata.id,
+          title: metadata.title,
+          description: '',
+          channel: metadata.author,
+          author: metadata.author,
+          duration: metadata.duration,
+          durationSeconds: metadata.durationSeconds,
+          thumbnailUrl: metadata.thumbnailUrl,
+          embedUrl: metadata.embedUrl,
+          url: metadata.url
+        }
+      });
+    } catch (err: any) {
+      const stage = err.stage || 'FETCH_VIDEO_METADATA';
+      const code = err.code || 'METADATA_FAILED';
+      const statusCode = err.statusCode || 404;
+      const message = err.message || 'Unable to retrieve video information from YouTube.';
+
+      res.status(statusCode).json({
+        ok: false,
+        success: false,
+        stage,
+        code,
+        message,
+        analysisSessionId: sessionId,
+        error: { stage, code, message }
+      });
+    }
+  }
+
+  /**
+   * Processes a video through Stages 1 - 5 (URL validation, ID extraction, metadata, transcript, normalization).
+   * POST /api/videos/process
+   */
+  static async processVideo(req: Request, res: Response): Promise<void> {
+    const { url, manualTranscript, demoId, language, analysisSessionId } = req.body;
+    const sessionId = (typeof analysisSessionId === 'string' && analysisSessionId.trim())
+      ? analysisSessionId.trim()
+      : VideoIdentity.createSessionId();
+
+    let extractedVideoId = '';
+
+    try {
+      // Handle demo video request
+      if (demoId && DEMO_VIDEOS[demoId]) {
+        const demoResult = await VideoAnalysisService.analyzeVideoPipeline({
+          demoId,
+          analysisSessionId: sessionId,
+          language: language || 'en'
+        });
+
+        res.json({
+          ok: true,
+          success: true,
+          analysisSessionId: sessionId,
+          videoId: demoResult.videoId,
+          status: 'success',
+          data: {
+            metadata: demoResult.metadata,
+            transcript: demoResult.transcript,
+            rawText: demoResult.rawText,
+            chunkCount: demoResult.chunkCount,
+            source: 'demo'
+          },
+          metadata: demoResult.metadata,
+          transcript: demoResult.transcript,
+          rawText: demoResult.rawText,
+          chunkCount: demoResult.chunkCount,
+          source: 'demo'
+        });
+        return;
+      }
+
+      // Handle user manual transcript override
+      if (manualTranscript && typeof manualTranscript === 'string' && manualTranscript.trim().length > 0) {
+        const manualResult = await VideoAnalysisService.analyzeVideoPipeline({
+          manualTranscript,
+          analysisSessionId: sessionId,
+          language: language || 'en'
+        });
+
+        res.json({
+          ok: true,
+          success: true,
+          analysisSessionId: sessionId,
+          videoId: manualResult.videoId,
+          status: 'success',
+          data: {
+            metadata: manualResult.metadata,
+            transcript: manualResult.transcript,
+            rawText: manualResult.rawText,
+            chunkCount: manualResult.chunkCount,
+            source: 'manual'
+          },
+          metadata: manualResult.metadata,
+          transcript: manualResult.transcript,
+          rawText: manualResult.rawText,
+          chunkCount: manualResult.chunkCount,
+          source: 'manual'
+        });
+        return;
+      }
+
+      // STAGE 1: VALIDATE_URL
+      if (!url || typeof url !== 'string' || url.trim().length === 0) {
+        res.status(400).json({
+          ok: false,
+          success: false,
+          analysisSessionId: sessionId,
+          stage: 'VALIDATE_URL',
+          code: 'INVALID_YOUTUBE_URL',
+          message: 'Please provide a valid YouTube URL.',
+          error: {
+            stage: 'VALIDATE_URL',
+            code: 'INVALID_YOUTUBE_URL',
+            message: 'Please provide a valid YouTube URL.',
+            retryable: false
+          }
+        });
+        return;
+      }
+      VideoAnalysisService.validateUrl(url);
+
+      // STAGE 2: EXTRACT_VIDEO_ID
+      extractedVideoId = VideoAnalysisService.extractVideoId(url);
+
+      // STAGE 3: FETCH_VIDEO_METADATA
+      const metadata = await VideoAnalysisService.fetchVideoMetadata(extractedVideoId, url);
+
+      // STAGE 4: FETCH_TRANSCRIPT
+      const transcriptResult = await VideoAnalysisService.fetchTranscript(
+        extractedVideoId,
+        metadata.title,
+        metadata.author,
+        typeof language === 'string' ? language : 'en'
+      );
+
+      // STAGE 5: NORMALIZE_CONTENT
+      const normalized = VideoAnalysisService.normalizeContent(transcriptResult.transcript);
+      const { ChunkingService } = await import('../services/chunkingService.js');
+      const chunks = ChunkingService.splitTranscriptIntoChunks(normalized.cleanSegments);
+
+      const resData = {
+        metadata,
+        transcript: normalized.cleanSegments,
+        rawText: normalized.rawText,
+        languageCode: transcriptResult.languageCode,
+        trackType: transcriptResult.trackType,
+        chunkCount: chunks.length,
+        source: transcriptResult.source
+      };
+
+      res.json({
+        ok: true,
+        success: true,
+        sourceUrl: VideoIdentity.getCanonicalUrl(extractedVideoId),
+        analysisSessionId: sessionId,
+        videoId: extractedVideoId,
         status: 'success',
         data: resData,
         ...resData
       });
     } catch (err: any) {
-      console.error('Error in VideoController.processVideo:', err);
+      const stage = err.stage || 'FETCH_TRANSCRIPT';
+      let code = err.code || 'TRANSCRIPT_UNAVAILABLE';
+      let statusCode = err.statusCode || 500;
+      let message = err.message || 'Unable to analyze this video. Please try again.';
+      let retryable = err.retryable ?? false;
 
-      const rawCode = err.code || (err.message?.includes('NO_CAPTIONS') ? 'NO_CAPTIONS_AVAILABLE' : 'VIDEO_PROCESSING_FAILED');
-      const isNoCaptions = rawCode === 'NO_CAPTIONS_AVAILABLE' || err.message?.includes('NO_CAPTIONS_AVAILABLE');
-      const isBlocked = rawCode === 'CAPTIONS_BLOCKED_OR_FETCH_FAILED' || err.message?.includes('CAPTIONS_BLOCKED') || err.message?.includes('429');
-      const isUnsupportedLang = rawCode === 'UNSUPPORTED_LANGUAGE' || err.message?.includes('UNSUPPORTED_LANGUAGE');
-
-      let statusCode = 500;
-      let code = rawCode;
-      let retryable = false;
-
-      if (isNoCaptions) {
+      // Map well-known errors to human-safe messages and proper HTTP status
+      if (code === 'INVALID_YOUTUBE_URL') {
+        statusCode = 400;
+        message = 'Invalid YouTube URL. Please provide a standard link (e.g. youtube.com/watch?v=... or youtu.be/...).';
+        retryable = false;
+      } else if (code === 'INVALID_VIDEO_ID') {
+        statusCode = 400;
+        message = 'The provided YouTube link has an invalid or malformed video ID.';
+        retryable = false;
+      } else if (code === 'METADATA_FAILED') {
         statusCode = 404;
-        code = 'NO_CAPTIONS_AVAILABLE';
-        retryable = false;
-      } else if (isBlocked) {
-        statusCode = 429;
-        code = 'CAPTIONS_BLOCKED_OR_FETCH_FAILED';
+        message = 'Unable to load video details from YouTube. Please verify the link.';
         retryable = true;
-      } else if (isUnsupportedLang) {
-        statusCode = 422;
-        code = 'UNSUPPORTED_LANGUAGE';
+      } else if (code === 'TRANSCRIPT_UNAVAILABLE' || code === 'NO_CAPTIONS_AVAILABLE') {
+        statusCode = 404;
+        message = "We couldn't read this video's content, so a quiz can't be built. Try another video or paste a transcript.";
         retryable = false;
+      } else if (code === 'TRANSCRIPT_TIMEOUT') {
+        statusCode = 408;
+        message = 'Transcript retrieval timed out. Please try again.';
+        retryable = true;
+      } else if (code === 'INSUFFICIENT_VIDEO_CONTENT') {
+        statusCode = 422;
+        message = "We couldn't read this video's content, so a quiz can't be built. Try another video or paste a transcript.";
+        retryable = false;
+      } else if (err.status === 429 || code === 'RATE_LIMITED' || code === 'AI_SERVICE_ERROR') {
+        statusCode = 503;
+        code = 'RATE_LIMITED';
+        message = 'YouTube or AI service is temporarily rate-limited. Please try again in a few moments.';
+        retryable = true;
+      }
+
+      // Generate error correlation reference for non-user errors
+      let refId: string | undefined;
+      if (statusCode >= 500 || code === 'UNKNOWN_ERROR') {
+        refId = PipelineLogger.generateRefId();
+        // Section 35: Exact log format
+        console.error(
+          `[ANALYSIS ERROR]\n` +
+          `REF=${refId}\n` +
+          `SESSION=${sessionId}\n` +
+          `VIDEO=${extractedVideoId || 'unknown'}\n` +
+          `STAGE=${stage}\n` +
+          `CODE=${code}\n` +
+          `MESSAGE=${message}\n` +
+          `CAUSE=${err?.details || err?.message || String(err)}\n` +
+          `TIMESTAMP=${new Date().toISOString()}`
+        );
+      } else {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(
+            `[ANALYSIS ERROR]\n` +
+            `SESSION=${sessionId}\n` +
+            `VIDEO=${extractedVideoId || 'unknown'}\n` +
+            `STAGE=${stage}\n` +
+            `CODE=${code}\n` +
+            `MESSAGE=${message}`
+          );
+        }
       }
 
       res.status(statusCode).json({
         ok: false,
         success: false,
+        analysisSessionId: sessionId,
+        videoId: extractedVideoId,
+        stage,
+        code,
+        message,
+        retryable,
+        referenceId: refId,
+        refId,
         error: {
+          stage,
           code,
-          message: err.message || 'An unexpected error occurred while processing the video.',
-          stage: 'transcript_fetch',
-          retryable
+          message,
+          retryable,
+          refId,
+          referenceId: refId
         }
       });
     }

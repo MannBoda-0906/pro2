@@ -16,6 +16,7 @@ console.log('===================================================================
 console.log('STUDYTUBE AI — UNIT TEST SUITE: CONCEPT-FIRST VALIDATED QUIZ ENGINE');
 console.log('======================================================================\n');
 
+async function runAllUnitTests() {
 // -----------------------------------------------------------------------------
 // TEST 1: Coverage-Status Rules (S3)
 // -----------------------------------------------------------------------------
@@ -126,7 +127,9 @@ console.log('[UNIT TEST 2] Blueprint Distribution Validator (25 Qs, All 5 Format
       conceptId: ['C1', 'C2', 'C3', 'C4'][i % 4],
       subconcept: 'Sub',
       questionFormat: i < 18 ? 'numerical' : i < 21 ? 'true_false' : i < 23 ? 'fill_blank' : i === 23 ? 'match_columns' : 'theoretical',
-      methodId: `METHOD_${i % 10}`,
+      taskFamily: `TF_${i % 12}`,
+      unknownType: `type_${i}`,
+      methodId: `METHOD_${i % 12}`,
       procedureSignature: `proc_unique_sig_${i}`,
       cognitiveLevel: 'level_3_application',
       difficulty: 'medium',
@@ -139,6 +142,9 @@ console.log('[UNIT TEST 2] Blueprint Distribution Validator (25 Qs, All 5 Format
   };
 
   const resB = S8_BlueprintValidator.validateBlueprint(validBlueprint, coveragePlan, mockKnowledgeMap);
+  if (!resB.valid) {
+    console.error('resB errors:', resB.errors);
+  }
   assert.strictEqual(resB.valid, true, 'Valid blueprint meeting all 8 criteria must pass');
 
   console.log('  => PASS: Blueprint distribution and format checks enforced successfully.\n');
@@ -154,7 +160,18 @@ console.log('[UNIT TEST 3] Procedural Duplicate & Changed-Number Copy Rejection 
     academicLevel: 'Grade 11',
     chapter: 'Center of Mass',
     topic: 'System of Particles',
-    concepts: { C1: { conceptName: 'Two-Particle Center of Mass' } as any },
+    concepts: {
+      C1: {
+        conceptId: 'C1',
+        conceptName: 'Two-Particle Center of Mass',
+        definition: 'Position coordinate x_cm = (m1*x1 + m2*x2)/(m1+m2)',
+        formula: 'x_cm = (m1*x1 + m2*x2)/(m1+m2)',
+        variables: ['m1', 'm2', 'x1', 'x2'],
+        principle: 'Weighted average of coordinates',
+        solvingMethods: ['weighted_average_coord_summation'],
+        evidence: [{ text: 'Center of mass position is calculated using particle coordinates', start: 0, duration: 10, timestamp: '00:00' }]
+      } as any
+    },
     conceptList: [],
     coverageClassifications: {},
     allowedConceptIds: ['C1'],
@@ -167,6 +184,8 @@ console.log('[UNIT TEST 3] Procedural Duplicate & Changed-Number Copy Rejection 
     conceptId: 'C1',
     subconcept: 'Sub',
     questionFormat: 'numerical' as const,
+    taskFamily: 'DIRECT_CALC' as const,
+    unknownType: 'coordinate_center_of_mass',
     methodId: 'DIRECT_CALC',
     procedureSignature: 'weighted_average_coord_summation',
     cognitiveLevel: 'level_3_application' as const,
@@ -175,11 +194,20 @@ console.log('[UNIT TEST 3] Procedural Duplicate & Changed-Number Copy Rejection 
     videoCoverage: 'FULLY_COVERED' as const
   };
 
+  const evidenceRef = {
+    conceptId: 'C1',
+    sourceSegments: [{ text: 'Center of mass position is calculated using particle coordinates', start: 0, duration: 10, timestamp: '00:00' }],
+    sourceVideoId: 'v_unit_test'
+  };
+
   const existingQ: QuizQuestion = {
     id: 'q1',
     type: 'numerical',
     questionFormat: 'numerical',
     conceptId: 'C1',
+    taskFamily: 'DIRECT_CALC',
+    unknownType: 'coordinate_center_of_mass',
+    evidenceRef,
     methodId: 'DIRECT_CALC',
     procedureSignature: 'weighted_average_coord_summation',
     difficulty: 'medium',
@@ -188,7 +216,7 @@ console.log('[UNIT TEST 3] Procedural Duplicate & Changed-Number Copy Rejection 
     correctAnswer: '4 m',
     structuredSolution: {
       format: 'numerical',
-      numerical: { given: '', required: '', relationship: '', substitution: '', calculation: '(2*0 + 4*6)/(2+4) = 24/6 = 4', finalAnswer: '4 m', unit: 'm' },
+      numerical: { given: 'm1=2, m2=4', required: 'x_cm', relationship: 'x_cm = (m1*x1 + m2*x2)/(m1+m2)', substitution: '(2*0 + 4*6)/(2+4)', calculation: '(2*0 + 4*6)/(2+4) = 24/6 = 4', finalAnswer: '4 m', unit: 'm' },
       fullText: '4 m'
     },
     explanation: '4 m'
@@ -200,6 +228,9 @@ console.log('[UNIT TEST 3] Procedural Duplicate & Changed-Number Copy Rejection 
     type: 'numerical',
     questionFormat: 'numerical',
     conceptId: 'C1',
+    taskFamily: 'DIRECT_CALC',
+    unknownType: 'coordinate_center_of_mass',
+    evidenceRef,
     methodId: 'DIRECT_CALC',
     procedureSignature: 'weighted_average_coord_summation', // SAME procedure!
     difficulty: 'medium',
@@ -208,13 +239,13 @@ console.log('[UNIT TEST 3] Procedural Duplicate & Changed-Number Copy Rejection 
     correctAnswer: '6 m',
     structuredSolution: {
       format: 'numerical',
-      numerical: { given: '', required: '', relationship: '', substitution: '', calculation: '(3*0 + 6*9)/(3+6) = 54/9 = 6', finalAnswer: '6 m', unit: 'm' },
+      numerical: { given: 'm1=3, m2=6', required: 'x_cm', relationship: 'x_cm = (m1*x1 + m2*x2)/(m1+m2)', substitution: '(3*0 + 6*9)/(3+6)', calculation: '(3*0 + 6*9)/(3+6) = 54/9 = 6', finalAnswer: '6 m', unit: 'm' },
       fullText: '6 m'
     },
     explanation: '6 m'
   };
 
-  const valRes = S10_QuestionValidator.validateQuestion({
+  const valRes = await S10_QuestionValidator.validateQuestion({
     question: changedNumberCopyQ,
     slot,
     knowledgeMap: mockKnowledgeMap,
@@ -222,7 +253,10 @@ console.log('[UNIT TEST 3] Procedural Duplicate & Changed-Number Copy Rejection 
   });
 
   assert.strictEqual(valRes.valid, false, 'Changed-number copy with identical procedure signature must be rejected');
-  assert.strictEqual(valRes.validatorType, 'PROCEDURAL_DUPLICATE_CHECK');
+  assert.ok(
+    valRes.validatorType === 'PROCEDURAL_DUPLICATE_CHECK' || valRes.validatorType === 'TRIPLE_DUPLICATE_CHECK',
+    `Expected procedural duplicate or triple duplicate rejection, got ${valRes.validatorType}`
+  );
   console.log('  => PASS: Changed-number copy with duplicate procedure correctly REJECTED.\n');
 }
 
@@ -236,7 +270,18 @@ console.log('[UNIT TEST 4] Numerical Validator with Mathjs Independent Recomputa
     academicLevel: 'Grade 11',
     chapter: 'Center of Mass',
     topic: 'System of Particles',
-    concepts: { C1: { conceptName: 'Center of Mass' } as any },
+    concepts: {
+      C1: {
+        conceptId: 'C1',
+        conceptName: 'Center of Mass',
+        definition: 'Position coordinate x_cm = (m1*x1 + m2*x2)/(m1+m2)',
+        formula: 'x_cm = (m1*x1 + m2*x2)/(m1+m2)',
+        variables: ['m1', 'm2', 'x1', 'x2'],
+        principle: 'Weighted average of particle coordinates',
+        solvingMethods: ['DIRECT_CALC'],
+        evidence: [{ text: 'Calculated using center of mass formula', start: 0, duration: 10, timestamp: '00:00' }]
+      } as any
+    },
     conceptList: [],
     coverageClassifications: {},
     allowedConceptIds: ['C1'],
@@ -257,12 +302,19 @@ console.log('[UNIT TEST 4] Numerical Validator with Mathjs Independent Recomputa
     videoCoverage: 'FULLY_COVERED' as const
   };
 
+  const evidenceRef = {
+    conceptId: 'C1',
+    sourceSegments: [{ text: 'Calculated using center of mass formula', start: 0, duration: 10, timestamp: '00:00' }],
+    sourceVideoId: 'v_unit_test'
+  };
+
   // Case A: Correct calculation (2*0 + 6*4)/(2 + 6) = 24/8 = 3.0 m
   const validNumQ: QuizQuestion = {
     id: 'q_good',
     type: 'numerical',
     questionFormat: 'numerical',
     conceptId: 'C1',
+    evidenceRef,
     methodId: 'DIRECT_CALC',
     procedureSignature: 'unique_calc_sig_01',
     difficulty: 'medium',
@@ -285,7 +337,7 @@ console.log('[UNIT TEST 4] Numerical Validator with Mathjs Independent Recomputa
     explanation: '3 m'
   };
 
-  const resValid = S10_QuestionValidator.validateQuestion({
+  const resValid = await S10_QuestionValidator.validateQuestion({
     question: validNumQ,
     slot,
     knowledgeMap: mockKnowledgeMap,
@@ -301,7 +353,7 @@ console.log('[UNIT TEST 4] Numerical Validator with Mathjs Independent Recomputa
     options: ['5 m', '2 m', '4 m', '6 m']
   };
 
-  const resFlawed = S10_QuestionValidator.validateQuestion({
+  const resFlawed = await S10_QuestionValidator.validateQuestion({
     question: flawedNumQ,
     slot,
     knowledgeMap: mockKnowledgeMap,
@@ -323,7 +375,16 @@ console.log('[UNIT TEST 5] Match Columns Validator (>= 4 Pairs, Distractors, Una
     academicLevel: 'High School',
     chapter: 'Photosynthesis',
     topic: 'Chloroplast Mechanisms',
-    concepts: { C1: { conceptName: 'Chloroplast Structures' } as any },
+    concepts: {
+      C1: {
+        conceptId: 'C1',
+        conceptName: 'Chloroplast Structures',
+        definition: 'Organelles responsible for photosynthesis reactions',
+        principle: 'Chloroplast structures partition light and dark reactions',
+        solvingMethods: ['match_chloroplast_pairs'],
+        evidence: [{ text: 'Chloroplast thylakoids and stroma partition reactions', start: 0, duration: 10, timestamp: '00:00' }]
+      } as any
+    },
     conceptList: [],
     coverageClassifications: {},
     allowedConceptIds: ['C1'],
@@ -344,16 +405,23 @@ console.log('[UNIT TEST 5] Match Columns Validator (>= 4 Pairs, Distractors, Una
     videoCoverage: 'FULLY_COVERED' as const
   };
 
+  const evidenceRef = {
+    conceptId: 'C1',
+    sourceSegments: [{ text: 'Chloroplast thylakoids and stroma partition reactions', start: 0, duration: 10, timestamp: '00:00' }],
+    sourceVideoId: 'v_unit_test'
+  };
+
   // Case A: Valid 4-pair question
   const validMatchQ: QuizQuestion = {
     id: 'q_match_good',
     type: 'match_columns',
     questionFormat: 'match_columns',
     conceptId: 'C1',
+    evidenceRef,
     methodId: 'METHOD_SELECTION',
     procedureSignature: 'match_chloroplast_pairs',
     difficulty: 'medium',
-    question: 'Match organelles to functions:',
+    question: 'Match chloroplast organelles and structures to their verified functions:',
     options: ['1-B, 2-A, 3-C, 4-D'],
     correctAnswer: '1-B, 2-A, 3-C, 4-D',
     columnA: ['1. Thylakoid', '2. Stroma', '3. PS II', '4. RuBisCO'],
@@ -380,12 +448,15 @@ console.log('[UNIT TEST 5] Match Columns Validator (>= 4 Pairs, Distractors, Una
     explanation: 'Matched'
   };
 
-  const resMatchGood = S10_QuestionValidator.validateQuestion({
+  const resMatchGood = await S10_QuestionValidator.validateQuestion({
     question: validMatchQ,
     slot,
     knowledgeMap: mockKnowledgeMap,
     earlierQuestions: []
   });
+  if (!resMatchGood.valid) {
+    console.error('resMatchGood error:', resMatchGood.reason, resMatchGood.validatorType);
+  }
   assert.strictEqual(resMatchGood.valid, true, 'Valid 4-pair match must pass');
 
   // Case B: Insufficient pairs (< 4 pairs)
@@ -393,7 +464,7 @@ console.log('[UNIT TEST 5] Match Columns Validator (>= 4 Pairs, Distractors, Una
     ...validMatchQ,
     matchPairs: [{ left: '1', right: 'A' }, { left: '2', right: 'B' }]
   };
-  const resMatchBad = S10_QuestionValidator.validateQuestion({
+  const resMatchBad = await S10_QuestionValidator.validateQuestion({
     question: invalidMatchQ,
     slot,
     knowledgeMap: mockKnowledgeMap,
@@ -453,3 +524,9 @@ console.log('[UNIT TEST 6] Submission Scoring, Unanswered Handling & Concept Per
 console.log('======================================================================');
 console.log('ALL 6 UNIT TESTS PASSED WITH 100% SUCCESS!');
 console.log('======================================================================\n');
+}
+
+runAllUnitTests().catch(err => {
+  console.error('Unit tests failed:', err);
+  process.exit(1);
+});

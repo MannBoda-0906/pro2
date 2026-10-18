@@ -1,9 +1,12 @@
 import * as math from 'mathjs';
+import { GoogleGenAI } from '@google/genai';
 import {
   BlueprintSlot,
   PersistedKnowledgeMap,
   QuizQuestion
 } from '../../types/index.js';
+import { SolutionFingerprinter } from './solutionFingerprinter.js';
+import { ConceptRelevanceValidator } from './conceptRelevanceValidator.js';
 
 export interface QuestionValidationResult {
   valid: boolean;
@@ -14,17 +17,31 @@ export interface QuestionValidationResult {
 
 export class S10_QuestionValidator {
   /**
-   * Stage 10: Validates candidate question in code using type-specific validators,
-   * independent mathematical re-computation with mathjs, knowledge map factual checks,
-   * solution alignment checks, and strict procedural duplicate rejection.
+   * Stage 10: Validates candidate question in code using:
+   * 1. Concept immutability check (question concept must match blueprint slot concept).
+   * 2. Concept origin check (concept must be allowed in knowledge map).
+   * 3. Stored solution existence check.
+   * 4. Phase 1C: Concept-Question Relevance Validator (derives formula from solution, checks genericness, blind classification).
+   * 5. Canonical procedural duplicate & diversity check.
+   * 6. Type-specific & independent mathjs re-computation check.
    */
-  public static validateQuestion(params: {
+  public static async validateQuestion(params: {
     question: QuizQuestion;
     slot: BlueprintSlot;
     knowledgeMap: PersistedKnowledgeMap;
     earlierQuestions: QuizQuestion[];
-  }): QuestionValidationResult {
-    const { question, slot, knowledgeMap, earlierQuestions } = params;
+    client?: GoogleGenAI | null;
+  }): Promise<QuestionValidationResult> {
+    const { question, slot, knowledgeMap, earlierQuestions, client } = params;
+
+    // Check 0: Concept Immutability Check - generator CANNOT change slot concept
+    if (!slot.conceptId || question.conceptId !== slot.conceptId) {
+      return {
+        valid: false,
+        reason: `Concept immutability violation: Question conceptId '${question.conceptId}' does not match slot conceptId '${slot.conceptId}'.`,
+        validatorType: 'CONCEPT_IMMUTABILITY_CHECK'
+      };
+    }
 
     // Check 1: Concept ID must exist in knowledge map and be allowed
     if (!knowledgeMap.allowedConceptIds.includes(question.conceptId || '')) {
@@ -44,7 +61,39 @@ export class S10_QuestionValidator {
       };
     }
 
-    // Check 3: Method Diversity & Procedural Duplicate Check
+    // Check 3: Concept-Question Relevance Validator (Phase 1C)
+    const conceptObj = knowledgeMap.concepts[slot.conceptId];
+    if (conceptObj) {
+      const relevance = await ConceptRelevanceValidator.validateQuestionAgainstConcept({
+        question,
+        conceptObj,
+        knowledgeMap,
+        client
+      });
+
+      if (!relevance.valid) {
+        return {
+          valid: false,
+          reason: relevance.reason || 'Failed concept relevance verification.',
+          validatorType: relevance.verdict
+        };
+      }
+    }
+
+    // Derive and attach canonical solution fingerprint
+    const fingerprint = SolutionFingerprinter.computeFingerprint(question);
+    question.computedFingerprint = fingerprint;
+    if (fingerprint.procedureSignature) {
+      question.procedureSignature = fingerprint.procedureSignature;
+    }
+    if (fingerprint.taskFamily) {
+      question.taskFamily = fingerprint.taskFamily;
+    }
+    if (!question.unknownType && slot.unknownType) {
+      question.unknownType = slot.unknownType;
+    }
+
+    // Check 3: Method Diversity & Canonical Procedural Duplicate Check
     const duplicateCheck = this.checkProceduralDuplicates(question, earlierQuestions);
     if (!duplicateCheck.valid) {
       return duplicateCheck;
@@ -71,42 +120,57 @@ export class S10_QuestionValidator {
 
   /**
    * Procedural duplicate detector:
-   * 1. Exact-match check on (concept_id, procedure_signature).
-   * 2. Comparison on method_id, unknown variable, and reasoning path.
-   * 3. Max 2 numerical questions with same method_id across quiz.
+   * 1. Exact-match check on canonical procedure signature.
+   * 2. (concept_id, task_family, unknown_type) triple duplicate check.
+   * 3. Max 2 numerical questions with same task_family across quiz.
    */
   private static checkProceduralDuplicates(
     q: QuizQuestion,
     earlierQuestions: QuizQuestion[]
   ): QuestionValidationResult {
     const cid = q.conceptId || '';
-    const proc = (q.procedureSignature || '').trim().toLowerCase();
-    const mid = (q.methodId || '').trim();
+    const proc = (q.procedureSignature || q.computedFingerprint?.procedureSignature || '').trim().toLowerCase();
+    const family = q.taskFamily || q.computedFingerprint?.taskFamily || q.methodId || '';
 
-    // 1. Exact-match on (concept_id, procedure_signature)
+    // 1. Exact-match on canonical procedure_signature
     for (const prior of earlierQuestions) {
-      const priorCid = prior.conceptId || '';
-      const priorProc = (prior.procedureSignature || '').trim().toLowerCase();
+      const priorProc = (prior.procedureSignature || prior.computedFingerprint?.procedureSignature || '').trim().toLowerCase();
 
-      if (cid === priorCid && proc === priorProc && proc.length > 0) {
+      if (proc === priorProc && proc.length > 0) {
         return {
           valid: false,
-          reason: `Duplicate procedure detected: Concept ${cid} already has a question with procedure signature '${proc}'.`,
-          validatorType: 'PROCEDURAL_DUPLICATE_CHECK'
+          reason: `Duplicate procedure detected: A question with identical canonical procedure signature '${proc}' already exists.`,
+          validatorType: 'CANONICAL_FINGERPRINT_DUPLICATE_CHECK'
+        };
+      }
+
+      // Check duplicate (conceptId, taskFamily, unknownType)
+      if (
+        cid === prior.conceptId &&
+        family === (prior.taskFamily || prior.computedFingerprint?.taskFamily) &&
+        q.unknownType &&
+        q.unknownType === prior.unknownType
+      ) {
+        return {
+          valid: false,
+          reason: `Duplicate (concept, taskFamily, unknownType) triple: ${cid}:${family}:${q.unknownType}`,
+          validatorType: 'TRIPLE_DUPLICATE_CHECK'
         };
       }
     }
 
-    // 2. Max 2 numerical questions with same method_id in whole quiz
+    // 2. Max 2 numerical questions with same taskFamily in whole quiz
     if (q.questionFormat === 'numerical' || q.type === 'numerical' || q.numericalOrTheory === 'numerical') {
-      const sameMethodCount = earlierQuestions.filter(
-        prior => (prior.questionFormat === 'numerical' || prior.type === 'numerical') && prior.methodId === mid
-      ).length;
+      const sameMethodCount = earlierQuestions.filter(prior => {
+        const pFamily = prior.taskFamily || prior.computedFingerprint?.taskFamily || prior.methodId;
+        const isNum = prior.questionFormat === 'numerical' || prior.type === 'numerical' || prior.numericalOrTheory === 'numerical';
+        return isNum && pFamily === family;
+      }).length;
 
       if (sameMethodCount >= 2) {
         return {
           valid: false,
-          reason: `Method diversity exceeded: method_id '${mid}' is already used by 2 numerical questions.`,
+          reason: `Method diversity exceeded: taskFamily '${family}' is already used by 2 numerical questions.`,
           validatorType: 'METHOD_DIVERSITY_CHECK'
         };
       }

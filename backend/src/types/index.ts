@@ -110,6 +110,7 @@ export interface QuestionValidationRecord {
 export interface QuizQuestion {
   id: string;
   analysisSessionId?: string;
+  generationAttemptId?: string;
   videoId?: string;
   slotIndex?: number;
   type: QuestionType;
@@ -146,10 +147,20 @@ export interface QuizQuestion {
   stepByStepSolution?: string;
   explanation: string;
   mistakeExplanation?: string;
+  taskFamily?: string;
   correctMethod?: string;
+  computedFingerprint?: any;
+  refId?: string;
   distractorRationale?: { option: string; errorType: string }[];
   misconceptionExploration?: string;
   validationStatus?: QuestionValidationRecord;
+  evidenceRef?: {
+    conceptId: string;
+    sourceSegments?: Array<{ text: string; start?: number; duration?: number; timestamp?: string }>;
+    sourceVideoId?: string;
+  };
+  formulaUsed?: string;
+  relevanceVerdict?: string;
   timestampSeconds?: number;
   timestampFormatted?: string;
 }
@@ -214,6 +225,8 @@ export interface ConceptUnderstandingObject {
     diagnose?: string[];
     apply?: string[];
   };
+  evidence?: Array<{ text: string; start?: number; duration?: number; timestamp?: string }>;
+  sourceVideoId?: string;
 }
 
 export interface PersistedKnowledgeMap {
@@ -255,6 +268,8 @@ export interface BlueprintSlot {
   procedureSignature: string;
   cognitiveLevel: CognitiveLevel;
   difficulty: 'easy' | 'medium' | 'hard';
+  taskFamily?: string;
+  unknownType?: string;
   expectedAnswerFormat: string;
   videoCoverage: 'FULLY_COVERED' | 'MOSTLY_COVERED' | 'PARTIALLY_COVERED';
 }
@@ -264,6 +279,8 @@ export interface QuizBlueprint {
   formatCounts: Record<QuestionFormat, number>;
   numericalMethodCounts: Record<string, number>;
   validated: boolean;
+  isAdaptiveDistribution?: boolean;
+  targetNumerical?: number;
 }
 
 export interface ConceptKnowledgeItem {
@@ -421,6 +438,9 @@ export interface TopicCoverageReport {
 export interface QuizData {
   id?: string;
   analysisSessionId?: string;
+  generationAttemptId?: string;
+  generationJobId?: string;
+  isValidated?: boolean;
   videoId?: string;
   transcriptHash?: string;
   analysisVersion?: number | string;
@@ -529,4 +549,56 @@ export interface HistoryItem {
   summary?: SummaryData;
   quiz?: QuizData;
   flashcards?: Flashcard[];
+  transcript?: TranscriptSegment[];
+  rawText?: string;
 }
+
+export type GenerationJobStatus =
+  | 'QUEUED'
+  | 'FETCHING_VIDEO'
+  | 'FETCHING_TRANSCRIPT'
+  | 'ANALYZING_VIDEO'
+  | 'EXTRACTING_CONCEPTS'
+  | 'UNDERSTANDING_CONCEPTS'
+  | 'BUILDING_CONCEPT_MAP'
+  | 'BUILDING_COVERAGE_PLAN'
+  | 'BUILDING_QUESTION_BLUEPRINT'
+  | 'GENERATING_QUESTIONS'
+  | 'VALIDATING_QUESTIONS'
+  | 'REPAIRING_QUESTIONS'
+  | 'FINAL_VALIDATION'
+  | 'SAVING_QUIZ'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'STALLED';
+
+export interface GenerationJob {
+  generationJobId: string;
+  analysisSessionId: string;
+  generationAttemptId: string;
+  videoId: string;
+  sourceUrl: string;
+  status: GenerationJobStatus;
+  stage: string;
+  stageDescription: string;
+  progress: number;
+  totalQuestionCount: number;
+  validQuestionCount: number;
+  invalidQuestionCount: number;
+  repairAttemptsCount: number;
+  conceptCount: number;
+  allowedConceptCount: number;
+  createdAt: number;
+  updatedAt: number;
+  error?: {
+    code: string;
+    stage: string;
+    message: string;
+    refId?: string;
+    retryable: boolean;
+  } | null;
+  quiz?: QuizData | null;
+  metadata?: any;
+}
+

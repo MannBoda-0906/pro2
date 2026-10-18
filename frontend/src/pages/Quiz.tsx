@@ -4,6 +4,8 @@ import { QuizData } from '../types';
 
 export interface QuizPageProps {
   quiz: QuizData | null;
+  videoId?: string;
+  analysisSessionId?: string;
   onGenerateQuiz: (difficulty: 'easy' | 'medium' | 'hard', count: number) => void;
   isGenerating: boolean;
   onExportQuiz: () => void;

@@ -19,7 +19,7 @@ import { ApiService } from './services/api';
 import { StorageService } from './services/storage';
 import { VideoIdentity } from './utils/videoIdentity';
 import { isFeatureDisabled, cleanOldFeatureStorage } from './utils/featureGuard';
-import { getErrorMessage } from './utils';
+import { getErrorMessage, parseErrorDetails } from './utils';
 import {
   AssistantMessage,
   DemoSample,
@@ -34,12 +34,23 @@ export const App: React.FC = () => {
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>(() => StorageService.getThemeMode());
   const [theme, setTheme] = useState<'light' | 'dark'>(() => StorageService.getEffectiveTheme(themeMode));
 
-  // Phase 2: Active Session & Cancellation Refs
+  // Phase 2 & 4: Active Session, Attempt & Cancellation Refs
   const abortControllerRef = React.useRef<AbortController | null>(null);
   const currentSessionRef = React.useRef<{
     analysisSessionId: string;
+    generationAttemptId: string;
     videoId: string;
+    sourceUrl?: string;
     url?: string;
+  } | null>(null);
+  const [generationAttemptId, setGenerationAttemptId] = useState<string>('att_1');
+  const [retryCount, setRetryCount] = useState<number>(0);
+  const [consecutiveFailures, setConsecutiveFailures] = useState<{ stage: string; count: number }>({ stage: '', count: 0 });
+  const [lastErrorDiagnostic, setLastErrorDiagnostic] = useState<{
+    code?: string;
+    stage?: string;
+    message?: string;
+    refId?: string;
   } | null>(null);
   const [discardedCount, setDiscardedCount] = useState<number>(0);
   const [lastDiscardedReason, setLastDiscardedReason] = useState<string>('');
@@ -65,6 +76,7 @@ export const App: React.FC = () => {
   const [loadingStep, setLoadingStep] = useState<string>('');
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState<boolean>(false);
+  const [quizGeneratingStage, setQuizGeneratingStage] = useState<string>('');
   const [isGeneratingPractice, setIsGeneratingPractice] = useState<boolean>(false);
   const [isAssistantThinking, setIsAssistantThinking] = useState<boolean>(false);
 
@@ -107,7 +119,18 @@ export const App: React.FC = () => {
 
   // Load initial data (health, demos, history) & purge obsolete cached features
   useEffect(() => {
+    StorageService.initStorage();
     cleanOldFeatureStorage();
+
+    const cleanupSync = StorageService.onHistorySync((clearedAt) => {
+      console.log(`[App] Received cross-tab history clear broadcast (clearedAt=${clearedAt}), resetting state.`);
+      setHistory([]);
+      setActiveVideo(null);
+      setActiveQuiz(null);
+      setAssistantMessages([]);
+      currentSessionRef.current = null;
+    });
+
     const init = async () => {
       try {
         const health = await ApiService.checkHealth();
@@ -135,17 +158,32 @@ export const App: React.FC = () => {
     };
 
     init();
+
+    return () => {
+      cleanupSync();
+    };
   }, []);
 
-  const addToast = (type: 'success' | 'error' | 'info', rawMessage: string) => {
-    const message = type === 'error' ? getErrorMessage(rawMessage) : rawMessage;
+  const addToast = (
+    type: 'success' | 'error' | 'info',
+    rawMessage: string,
+    onRetry?: () => void,
+    retryLabel?: string
+  ) => {
+    const parsed = type === 'error' ? parseErrorDetails(rawMessage) : null;
+    if (parsed && parsed.code === 'SESSION_SUPERSEDED') {
+      return; // Do not show an error when a newer video replaced this one
+    }
+    const message = parsed ? parsed.message : rawMessage;
+    if (!message) return;
+
     setToasts(prev => {
       // De-duplicate: show each failure once; ignore if identical message already shown
       if (prev.some(t => t.message === message && t.type === type)) {
         return prev;
       }
       const id = `toast_${Date.now()}_${Math.random()}`;
-      return [...prev, { id, type, message }];
+      return [...prev, { id, type, message, onRetry, retryLabel }];
     });
   };
 
@@ -171,6 +209,22 @@ export const App: React.FC = () => {
     url: string,
     options?: { language?: string; difficulty?: 'easy' | 'medium' | 'hard'; count?: number }
   ) => {
+    if (isLoading) return;
+
+    const requestedUrl = (url || '').trim();
+    if (!requestedUrl) {
+      addToast('error', 'Please paste a valid YouTube video link to begin.');
+      return;
+    }
+
+    let envelope;
+    try {
+      envelope = VideoIdentity.createIdentityEnvelope(requestedUrl);
+    } catch {
+      addToast('error', 'Please enter a valid YouTube link (e.g. https://www.youtube.com/watch?v=... or https://youtu.be/...).');
+      return;
+    }
+
     const lang = options?.language || selectedLanguage;
     const diff = options?.difficulty || selectedDifficulty;
     const cnt = options?.count || selectedCount;
@@ -182,41 +236,38 @@ export const App: React.FC = () => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // 2. Parse canonical videoId and create fresh analysisSessionId
-    const canonicalVideoId = VideoIdentity.parseCanonicalVideoId(url) || 'video';
-    const newSessionId = VideoIdentity.createSessionId();
+    // 2. Assign immutable identity envelope for this submission
+    currentSessionRef.current = envelope;
+    setGenerationAttemptId(envelope.generationAttemptId);
+    setRetryCount(0);
+    setConsecutiveFailures({ stage: '', count: 0 });
+    setLastErrorDiagnostic(null);
 
-    currentSessionRef.current = {
-      analysisSessionId: newSessionId,
-      videoId: canonicalVideoId,
-      url
-    };
-
-    // 3. Phase 2 Rule: The moment a new URL is submitted, clear all previous state
+    // 3. Phase 2 & 3 Rule: The moment a new URL is submitted, synchronously clear all previous state
     setActiveVideo(null);
     setActiveQuiz(null);
     setAssistantMessages([]);
-    StorageService.clearQuizSessions(canonicalVideoId, newSessionId);
+    StorageService.clearQuizSessions();
 
     setIsLoading(true);
     setLoadingStep('Fetching captions & transcript...');
     try {
       const processRes = await ApiService.processVideo({
-        url,
+        url: envelope.sourceUrl,
         language: lang,
-        analysisSessionId: newSessionId,
+        analysisSessionId: envelope.analysisSessionId,
         signal: controller.signal
       });
 
-      // Verification before applying response
+      // Verification before applying response: latest session wins
       if (
         controller.signal.aborted ||
-        currentSessionRef.current?.analysisSessionId !== newSessionId ||
-        currentSessionRef.current?.videoId !== canonicalVideoId
+        currentSessionRef.current?.analysisSessionId !== envelope.analysisSessionId ||
+        currentSessionRef.current?.videoId !== envelope.videoId
       ) {
-        console.warn(`[SessionIsolation] Discarding stale transcript for ${canonicalVideoId}`);
+        console.warn(`[SessionIsolation] Discarding stale transcript for ${envelope.videoId}`);
         setDiscardedCount(prev => prev + 1);
-        setLastDiscardedReason(`Stale transcript response discarded for ${canonicalVideoId}`);
+        setLastDiscardedReason(`Stale transcript response discarded for ${envelope.videoId}`);
         return;
       }
 
@@ -231,35 +282,68 @@ export const App: React.FC = () => {
       let quizData: QuizData | null = null;
       try {
         quizData = await ApiService.generateQuiz({
-          videoId: canonicalVideoId,
-          videoUrl: processRes.metadata.url,
+          videoId: envelope.videoId,
+          sourceUrl: envelope.sourceUrl,
+          videoUrl: envelope.sourceUrl,
           title: processRes.metadata.title,
           transcript: processRes.transcript,
           difficulty: diff,
           count: cnt,
           language: lang,
-          analysisSessionId: newSessionId,
+          analysisSessionId: envelope.analysisSessionId,
+          generationAttemptId: envelope.generationAttemptId,
           signal: controller.signal
         });
 
-        // Verification before applying quiz response
+        // Verification before applying quiz response: latest session & attempt must match
         if (
           controller.signal.aborted ||
-          currentSessionRef.current?.analysisSessionId !== newSessionId ||
-          currentSessionRef.current?.videoId !== canonicalVideoId
+          currentSessionRef.current?.analysisSessionId !== envelope.analysisSessionId ||
+          currentSessionRef.current?.generationAttemptId !== envelope.generationAttemptId ||
+          currentSessionRef.current?.videoId !== envelope.videoId
         ) {
-          console.warn(`[SessionIsolation] Discarding stale quiz for ${canonicalVideoId}`);
+          console.warn(`[SessionIsolation] Discarding stale quiz for ${envelope.videoId}`);
           setDiscardedCount(prev => prev + 1);
-          setLastDiscardedReason(`Stale quiz response discarded for session ${newSessionId}`);
+          setLastDiscardedReason(`Stale quiz response discarded for session ${envelope.analysisSessionId}`);
           return;
         }
 
-        StorageService.saveQuizSession(canonicalVideoId, newSessionId, quizData);
+        StorageService.saveQuizSession(envelope.videoId, envelope.analysisSessionId, quizData);
         setActiveQuiz(quizData);
+        setConsecutiveFailures({ stage: '', count: 0 });
+        setLastErrorDiagnostic(null);
       } catch (quizErr: any) {
         if (controller.signal.aborted) return;
         console.warn('Initial concept quiz generation warning:', quizErr);
-        addToast('error', 'Unable to analyze this video. Please try again.');
+        const parsed = parseErrorDetails(quizErr);
+        const errStage = quizErr.stage || parsed.stage || 'pipeline';
+        setLastErrorDiagnostic({
+          code: quizErr.code || parsed.code,
+          stage: errStage,
+          message: parsed.message,
+          refId: quizErr.refId || parsed.refId
+        });
+        setConsecutiveFailures({ stage: errStage, count: 1 });
+
+        if (import.meta.env.DEV) {
+          console.error(
+            `[ANALYSIS ERROR]\n` +
+            `session: ${envelope.analysisSessionId}\n` +
+            `videoId: ${envelope.videoId}\n` +
+            `stage: ${errStage}\n` +
+            `code: ${quizErr.code || parsed.code}\n` +
+            `message: ${parsed.message}\n` +
+            `refId: ${quizErr.refId || parsed.refId || 'none'}`
+          );
+        }
+
+        if (parsed.code !== 'SESSION_SUPERSEDED') {
+          const retryLabel = errStage.toUpperCase().includes('CONCEPT')
+            ? 'Retry Concept Analysis'
+            : 'Retry Quiz Generation';
+          const retryAction = parsed.retryable ? () => handleGenerateQuiz(diff, cnt, true) : undefined;
+          addToast('error', parsed.message, retryAction, retryLabel);
+        }
         setActiveQuiz(null);
         return;
       }
@@ -269,14 +353,16 @@ export const App: React.FC = () => {
 
       // Auto-save to history
       const historyItem: HistoryItem = {
-        id: `hist_${canonicalVideoId}_${Date.now()}`,
-        videoId: canonicalVideoId,
+        id: `hist_${envelope.videoId}_${Date.now()}`,
+        videoId: envelope.videoId,
         url: processRes.metadata.url,
         title: processRes.metadata.title,
         author: processRes.metadata.author,
         thumbnailUrl: processRes.metadata.thumbnailUrl,
         createdAt: new Date().toISOString(),
-        quiz: quizData || undefined
+        quiz: quizData || undefined,
+        transcript: processRes.transcript,
+        rawText: processRes.rawText
       };
       await ApiService.saveHistory(historyItem);
       setHistory(prev => [historyItem, ...prev.filter(h => h.videoId !== historyItem.videoId)]);
@@ -292,18 +378,37 @@ export const App: React.FC = () => {
       // Zero reuse of previous video's transcript, concepts, questions on failure
       setActiveVideo(null);
       setActiveQuiz(null);
-      const friendlyMsg = err.needsManualTranscript || err.code === 'NO_CAPTIONS_AVAILABLE'
-        ? getErrorMessage(err)
-        : 'Unable to analyze this video. Please try again.';
-      addToast('error', friendlyMsg);
+      const parsed = parseErrorDetails(err);
+      const errStage = err.stage || parsed.stage || 'FETCH_TRANSCRIPT';
 
-      if (err.needsManualTranscript || err.code === 'NO_CAPTIONS_AVAILABLE' || friendlyMsg.includes('paste a transcript')) {
+      if (import.meta.env.DEV) {
+        console.error(
+          `[ANALYSIS ERROR]\n` +
+          `session: ${envelope?.analysisSessionId}\n` +
+          `videoId: ${envelope?.videoId}\n` +
+          `youtubeUrl: ${url}\n` +
+          `stage: ${errStage}\n` +
+          `code: ${err.code || parsed.code}\n` +
+          `message: ${parsed.message}\n` +
+          `refId: ${err.refId || parsed.refId || 'none'}`
+        );
+      }
+
+      if (parsed.code !== 'SESSION_SUPERSEDED') {
+        const retryLabel = (errStage.toUpperCase().includes('URL') || errStage.toUpperCase().includes('METADATA') || errStage.toUpperCase().includes('TRANSCRIPT'))
+          ? 'Retry Transcript'
+          : 'Retry Analysis';
+        const retryAction = parsed.retryable ? () => handleProcessUrl(url, options) : undefined;
+        addToast('error', parsed.message, retryAction, retryLabel);
+      }
+
+      if (err.needsManualTranscript || err.code === 'NO_CAPTIONS_AVAILABLE' || parsed.code === 'TRANSCRIPT_UNAVAILABLE' || parsed.message.includes('paste a transcript')) {
         setManualTranscriptTitle(err.metadata?.title || '');
-        setManualTranscriptError(friendlyMsg);
+        setManualTranscriptError(parsed.message);
         setIsManualTranscriptOpen(true);
       }
     } finally {
-      if (currentSessionRef.current?.analysisSessionId === newSessionId) {
+      if (currentSessionRef.current?.analysisSessionId === envelope?.analysisSessionId) {
         setIsLoading(false);
         setLoadingStep('');
       }
@@ -329,8 +434,13 @@ export const App: React.FC = () => {
 
     currentSessionRef.current = {
       analysisSessionId: newSessionId,
+      generationAttemptId: 'att_1',
       videoId: canonicalVideoId
     };
+    setGenerationAttemptId('att_1');
+    setRetryCount(0);
+    setConsecutiveFailures({ stage: '', count: 0 });
+    setLastErrorDiagnostic(null);
 
     setActiveVideo(null);
     setActiveQuiz(null);
@@ -371,6 +481,7 @@ export const App: React.FC = () => {
         count: cnt,
         language: lang,
         analysisSessionId: newSessionId,
+        generationAttemptId: 'att_1',
         signal: controller.signal
       });
 
@@ -386,6 +497,8 @@ export const App: React.FC = () => {
 
       StorageService.saveQuizSession(canonicalVideoId, newSessionId, quiz);
       setActiveQuiz(quiz);
+      setConsecutiveFailures({ stage: '', count: 0 });
+      setLastErrorDiagnostic(null);
 
       setAssistantMessages([]);
       setActiveTab('quiz');
@@ -394,7 +507,19 @@ export const App: React.FC = () => {
       if (controller.signal.aborted) return;
       setActiveVideo(null);
       setActiveQuiz(null);
-      addToast('error', 'Unable to analyze this video. Please try again.');
+      const parsed = parseErrorDetails(err);
+      const errStage = err.stage || parsed.stage || 'pipeline';
+      setLastErrorDiagnostic({
+        code: err.code || parsed.code,
+        stage: errStage,
+        message: parsed.message,
+        refId: err.refId || parsed.refId
+      });
+      setConsecutiveFailures({ stage: errStage, count: 1 });
+      if (parsed.code !== 'SESSION_SUPERSEDED') {
+        const retryAction = parsed.retryable ? () => handleGenerateQuiz(diff, cnt, true) : undefined;
+        addToast('error', parsed.message, retryAction);
+      }
     } finally {
       if (currentSessionRef.current?.analysisSessionId === newSessionId) {
         setIsLoading(false);
@@ -417,6 +542,7 @@ export const App: React.FC = () => {
 
     currentSessionRef.current = {
       analysisSessionId: newSessionId,
+      generationAttemptId: 'att_1',
       videoId: canonicalVideoId
     };
 
@@ -489,7 +615,10 @@ export const App: React.FC = () => {
       if (controller.signal.aborted) return;
       setActiveVideo(null);
       setActiveQuiz(null);
-      addToast('error', 'Unable to analyze this video. Please try again.');
+      const parsed = parseErrorDetails(err);
+      if (parsed.code !== 'SESSION_SUPERSEDED') {
+        addToast('error', parsed.message);
+      }
     } finally {
       if (currentSessionRef.current?.analysisSessionId === newSessionId) {
         setIsLoading(false);
@@ -504,33 +633,57 @@ export const App: React.FC = () => {
     setSelectedLanguage(newLang);
     if (!activeVideo) return;
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const newSessionId = VideoIdentity.createSessionId();
+    const attemptId = VideoIdentity.createAttemptId(1);
     const vid = activeVideo.metadata.id;
     currentSessionRef.current = {
       analysisSessionId: newSessionId,
-      videoId: vid
+      generationAttemptId: attemptId,
+      videoId: vid,
+      sourceUrl: activeVideo.metadata.url
     };
 
+    setActiveQuiz(null);
     setIsRegenerating(true);
     try {
       const quiz = await ApiService.generateQuiz({
         videoId: vid,
+        sourceUrl: activeVideo.metadata.url,
         videoUrl: activeVideo.metadata.url,
         title: activeVideo.metadata.title,
         transcript: activeVideo.transcript,
         difficulty: selectedDifficulty,
         count: selectedCount,
         language: newLang,
-        analysisSessionId: newSessionId
+        analysisSessionId: newSessionId,
+        generationAttemptId: attemptId,
+        signal: controller.signal
       });
 
-      if (currentSessionRef.current?.analysisSessionId !== newSessionId) return;
+      if (
+        controller.signal.aborted ||
+        currentSessionRef.current?.analysisSessionId !== newSessionId ||
+        currentSessionRef.current?.videoId !== vid
+      ) {
+        return;
+      }
 
       StorageService.saveQuizSession(vid, newSessionId, quiz);
       setActiveQuiz(quiz);
       addToast('success', `Adapted 25-question quiz into selected language!`);
     } catch (err: any) {
-      addToast('error', 'Unable to analyze this video. Please try again.');
+      if (controller.signal.aborted) return;
+      const parsed = parseErrorDetails(err);
+      if (parsed.code !== 'SESSION_SUPERSEDED') {
+        const retryAction = parsed.retryable ? () => handleLanguageChange(newLang) : undefined;
+        addToast('error', parsed.message, retryAction);
+      }
     } finally {
       setIsRegenerating(false);
     }
@@ -538,33 +691,58 @@ export const App: React.FC = () => {
 
   const handleRegenerate = async () => {
     if (!activeVideo) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const newSessionId = VideoIdentity.createSessionId();
+    const attemptId = VideoIdentity.createAttemptId(1);
     const vid = activeVideo.metadata.id;
     currentSessionRef.current = {
       analysisSessionId: newSessionId,
-      videoId: vid
+      generationAttemptId: attemptId,
+      videoId: vid,
+      sourceUrl: activeVideo.metadata.url
     };
 
+    setActiveQuiz(null);
     setIsRegenerating(true);
     try {
       const quiz = await ApiService.generateQuiz({
         videoId: vid,
+        sourceUrl: activeVideo.metadata.url,
         videoUrl: activeVideo.metadata.url,
         title: activeVideo.metadata.title,
         transcript: activeVideo.transcript,
         difficulty: selectedDifficulty,
         count: selectedCount,
         language: selectedLanguage,
-        analysisSessionId: newSessionId
+        analysisSessionId: newSessionId,
+        generationAttemptId: attemptId,
+        signal: controller.signal
       });
 
-      if (currentSessionRef.current?.analysisSessionId !== newSessionId) return;
+      if (
+        controller.signal.aborted ||
+        currentSessionRef.current?.analysisSessionId !== newSessionId ||
+        currentSessionRef.current?.videoId !== vid
+      ) {
+        return;
+      }
 
       StorageService.saveQuizSession(vid, newSessionId, quiz);
       setActiveQuiz(quiz);
       addToast('success', '25-Question exam quiz regenerated!');
     } catch (err: any) {
-      addToast('error', 'Unable to analyze this video. Please try again.');
+      if (controller.signal.aborted) return;
+      const parsed = parseErrorDetails(err);
+      if (parsed.code !== 'SESSION_SUPERSEDED') {
+        const retryAction = parsed.retryable ? () => handleRegenerate() : undefined;
+        addToast('error', parsed.message, retryAction);
+      }
     } finally {
       setIsRegenerating(false);
     }
@@ -572,38 +750,145 @@ export const App: React.FC = () => {
 
   // ===================== QUIZ ACTIONS =====================
 
-  const handleGenerateQuiz = async (difficulty: 'easy' | 'medium' | 'hard' = 'medium', count: number = 25) => {
+  const handleGenerateQuiz = async (
+    difficulty: 'easy' | 'medium' | 'hard' = 'medium',
+    count: number = 25,
+    isRetry = false
+  ) => {
     if (!activeVideo || isGeneratingQuiz) return;
-    const newSessionId = VideoIdentity.createSessionId();
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    let targetSessionId = currentSessionRef.current?.analysisSessionId;
+    let nextAttempt = 'att_1';
+
+    if (isRetry && targetSessionId) {
+      const nextNum = retryCount + 2;
+      nextAttempt = VideoIdentity.createAttemptId(nextNum);
+      setRetryCount(prev => prev + 1);
+    } else {
+      targetSessionId = VideoIdentity.createSessionId();
+      nextAttempt = VideoIdentity.createAttemptId(1);
+      setRetryCount(0);
+      setConsecutiveFailures({ stage: '', count: 0 });
+    }
+
+    setGenerationAttemptId(nextAttempt);
     const vid = activeVideo.metadata.id;
     currentSessionRef.current = {
-      analysisSessionId: newSessionId,
-      videoId: vid
+      analysisSessionId: targetSessionId,
+      generationAttemptId: nextAttempt,
+      videoId: vid,
+      sourceUrl: activeVideo.metadata.url
     };
 
+    // Keep user selections after failure
+    setSelectedDifficulty(difficulty);
+    setSelectedCount(count);
+
+    // Synchronously clear previous quiz so old quiz is never visible while generating
+    setActiveQuiz(null);
     setIsGeneratingQuiz(true);
+    setQuizGeneratingStage(isRetry ? 'Resuming from validated stage checkpoints...' : 'Fetching captions');
+    setLastErrorDiagnostic(null);
+
     try {
+      const sTimer1 = setTimeout(() => setQuizGeneratingStage('Finding concepts'), 600);
+      const sTimer2 = setTimeout(() => setQuizGeneratingStage('Planning the quiz'), 1200);
+      const sTimer3 = setTimeout(() => setQuizGeneratingStage('Writing questions'), 2000);
+      const sTimer4 = setTimeout(() => setQuizGeneratingStage('Checking answers'), 3500);
+
       const quiz = await ApiService.generateQuiz({
         videoId: vid,
+        sourceUrl: activeVideo.metadata.url,
         videoUrl: activeVideo.metadata.url,
         title: activeVideo.metadata.title,
         transcript: activeVideo.transcript,
         difficulty,
         count,
         language: selectedLanguage,
-        analysisSessionId: newSessionId
+        analysisSessionId: targetSessionId,
+        generationAttemptId: nextAttempt,
+        signal: controller.signal
       });
 
-      if (currentSessionRef.current?.analysisSessionId !== newSessionId) return;
+      clearTimeout(sTimer1);
+      clearTimeout(sTimer2);
+      clearTimeout(sTimer3);
+      clearTimeout(sTimer4);
 
-      StorageService.saveQuizSession(vid, newSessionId, quiz);
+      if (
+        controller.signal.aborted ||
+        currentSessionRef.current?.analysisSessionId !== targetSessionId ||
+        currentSessionRef.current?.generationAttemptId !== nextAttempt ||
+        currentSessionRef.current?.videoId !== vid
+      ) {
+        console.warn(`[SessionIsolation] Stale response discarded for ${targetSessionId}/${nextAttempt}`);
+        setDiscardedCount(prev => prev + 1);
+        setLastDiscardedReason(`Stale quiz response discarded`);
+        return;
+      }
+
+      StorageService.saveQuizSession(vid, targetSessionId, quiz);
       setActiveQuiz(quiz);
-      addToast('success', `Created ${quiz.questions.length} ${difficulty} exam questions!`);
+      setConsecutiveFailures({ stage: '', count: 0 });
+      setLastErrorDiagnostic(null);
+      addToast('success', `${isRetry ? 'Recovered! ' : ''}Created ${quiz.questions.length} ${difficulty} exam questions!`);
     } catch (err: unknown) {
       console.error('Quiz generation error:', err);
-      addToast('error', 'Unable to analyze this video. Please try again.');
+      const anyErr = err as any;
+      const parsed = parseErrorDetails(anyErr);
+      if (parsed.code === 'SESSION_SUPERSEDED') return;
+
+      const errStage = anyErr.stage || parsed.stage || 'pipeline';
+      const refId = anyErr.refId || parsed.refId;
+
+      if (import.meta.env.DEV) {
+        console.error(
+          `[ANALYSIS ERROR]\n` +
+          `session: ${targetSessionId}\n` +
+          `videoId: ${vid}\n` +
+          `stage: ${errStage}\n` +
+          `code: ${anyErr.code || parsed.code}\n` +
+          `message: ${parsed.message}\n` +
+          `refId: ${refId || 'none'}`
+        );
+      }
+
+      setLastErrorDiagnostic({
+        code: anyErr.code || parsed.code,
+        stage: errStage,
+        message: parsed.message,
+        refId
+      });
+
+      const nextFailCount = consecutiveFailures.stage === errStage ? consecutiveFailures.count + 1 : 1;
+      setConsecutiveFailures({ stage: errStage, count: nextFailCount });
+
+      if (nextFailCount >= 2) {
+        addToast(
+          'error',
+          `${parsed.message} (Failed twice at stage: ${errStage}). Try another video or paste transcript.`,
+          () => {
+            setManualTranscriptTitle(activeVideo.metadata.title);
+            setManualTranscriptError(`Multiple generation failures at stage: ${errStage}`);
+            setIsManualTranscriptOpen(true);
+          }
+        );
+      } else {
+        const retryLabel = errStage.toUpperCase().includes('CONCEPT')
+          ? 'Retry Concept Analysis'
+          : 'Retry Quiz Generation';
+        const retryAction = parsed.retryable ? () => handleGenerateQuiz(difficulty, count, true) : undefined;
+        addToast('error', parsed.message, retryAction, retryLabel);
+      }
     } finally {
       setIsGeneratingQuiz(false);
+      setQuizGeneratingStage('');
     }
   };
 
@@ -701,21 +986,72 @@ export const App: React.FC = () => {
 
   // ===================== HISTORY MANAGEMENT =====================
 
+  const handleResetToHome = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setActiveVideo(null);
+    setActiveQuiz(null);
+    setAssistantMessages([]);
+    currentSessionRef.current = null;
+    StorageService.clearQuizSessions();
+  };
+
   const handleSelectHistoryItem = (item: HistoryItem) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const canonicalVideoId = VideoIdentity.parseCanonicalVideoId(item.videoId || item.url) || item.videoId;
+    const newSessionId = item.quiz?.analysisSessionId || VideoIdentity.createSessionId();
+
+    currentSessionRef.current = {
+      sourceUrl: item.url,
+      videoId: canonicalVideoId,
+      analysisSessionId: newSessionId,
+      generationAttemptId: 'att_1'
+    };
+
+    const initialTranscript = item.transcript || [];
+    const initialRawText = item.rawText || '';
+
     setActiveVideo({
       metadata: {
-        id: item.videoId,
+        id: canonicalVideoId,
         url: item.url,
         title: item.title,
         author: item.author,
         thumbnailUrl: item.thumbnailUrl,
-        embedUrl: `https://www.youtube.com/embed/${item.videoId}`
+        embedUrl: `https://www.youtube.com/embed/${canonicalVideoId}`
       },
-      transcript: [],
-      rawText: ''
+      transcript: initialTranscript,
+      rawText: initialRawText
     });
 
-    if (item.quiz) setActiveQuiz(item.quiz);
+    // If transcript was not stored in history, fetch it now so retries/regenerate work reliably
+    if (initialTranscript.length === 0 && item.url) {
+      ApiService.processVideo({ url: item.url, analysisSessionId: newSessionId })
+        .then(procRes => {
+          setActiveVideo(prev => {
+            if (prev && prev.metadata.id === canonicalVideoId) {
+              return {
+                ...prev,
+                transcript: procRes.transcript,
+                rawText: procRes.rawText
+              };
+            }
+            return prev;
+          });
+        })
+        .catch(() => {
+          // Non-blocking fetch notice
+        });
+    }
+
+    if (item.quiz && item.quiz.videoId === canonicalVideoId) {
+      setActiveQuiz(item.quiz);
+    } else {
+      setActiveQuiz(null);
+    }
     setAssistantMessages([]);
     setActiveTab('quiz');
     addToast('info', `Opened "${item.title}"`);
@@ -727,10 +1063,33 @@ export const App: React.FC = () => {
     addToast('info', 'Item removed from history.');
   };
 
-  const handleClearAllHistory = () => {
-    StorageService.clearHistory();
-    setHistory([]);
-    addToast('info', 'All history cleared.');
+  const handleClearAllHistory = async () => {
+    const confirmed = window.confirm(
+      'This will permanently delete your learning history, attempts, and cached quizzes. Are you sure you want to proceed?'
+    );
+    if (!confirmed) return;
+
+    StorageService.setClearingGuard(true);
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = new AbortController();
+    }
+
+    try {
+      await ApiService.clearAllHistory();
+      StorageService.clearAllClientStorage();
+      setHistory([]);
+      setActiveVideo(null);
+      setActiveQuiz(null);
+      setAssistantMessages([]);
+      currentSessionRef.current = null;
+      addToast('info', 'All learning history and cached quizzes have been permanently cleared.');
+    } catch (err: any) {
+      console.error('Failed to clear history:', err);
+      addToast('error', err.message || 'Failed to clear history on server. Previous history was preserved.');
+    } finally {
+      StorageService.setClearingGuard(false);
+    }
   };
 
   const handleSaveToHistoryExplicit = async () => {
@@ -786,7 +1145,7 @@ export const App: React.FC = () => {
         onToggleTheme={toggleTheme}
         onOpenHistory={() => setIsHistoryOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onGoHome={() => setActiveVideo(null)}
+        onGoHome={handleResetToHome}
         historyCount={history.length}
         hasActiveVideo={Boolean(activeVideo)}
         activeSection={
@@ -798,7 +1157,7 @@ export const App: React.FC = () => {
         }
         onNavigateSection={section => {
           if (section === 'home') {
-            setActiveVideo(null);
+            handleResetToHome();
           } else if (section === 'ai-tutor') {
             if (activeVideo) {
               setActiveTab('assistant');
@@ -882,8 +1241,11 @@ export const App: React.FC = () => {
             {activeTab === 'quiz' && (
               <QuizTab
                 quiz={activeQuiz}
+                videoId={activeVideo?.metadata.id}
+                analysisSessionId={currentSessionRef.current?.analysisSessionId}
                 onGenerateQuiz={handleGenerateQuiz}
                 isGenerating={isGeneratingQuiz}
+                generatingStage={quizGeneratingStage}
                 onExportQuiz={handleExportQuiz}
                 onSeek={handleSeek}
                 onGeneratePractice={handleGeneratePractice}
@@ -933,10 +1295,16 @@ export const App: React.FC = () => {
 
       <DevDebugPanel
         analysisSessionId={currentSessionRef.current?.analysisSessionId}
-        videoId={currentSessionRef.current?.videoId}
+        generationAttemptId={currentSessionRef.current?.generationAttemptId || generationAttemptId}
+        videoId={activeVideo?.metadata?.id || currentSessionRef.current?.videoId}
         transcriptHash={activeQuiz?.transcriptHash}
-        conceptCount={activeQuiz?.topicCoverageReport?.coveredConcepts?.length || 0}
-        questionCount={activeQuiz?.questions?.length || 0}
+        currentStage={isLoading ? loadingStep : isGeneratingQuiz ? quizGeneratingStage : activeQuiz ? 'Quiz Ready' : 'Idle'}
+        conceptCount={activeQuiz?.persistedKnowledgeMap?.allowedConceptIds?.length || activeQuiz?.topicCoverageReport?.coveredConcepts?.length || 0}
+        coveredConcepts={activeQuiz?.topicCoverageReport?.coveredConcepts?.length || 0}
+        blueprintCount={activeQuiz?.quizBlueprint?.slots?.length || activeQuiz?.questions?.length || 0}
+        validCount={activeQuiz?.questions?.length || 0}
+        retryCount={retryCount}
+        lastError={lastErrorDiagnostic}
         questions={activeQuiz?.questions || []}
         discardedCount={discardedCount}
         lastDiscardedReason={lastDiscardedReason}

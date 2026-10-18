@@ -547,45 +547,7 @@ ${sentences.slice(2, 6).map(s => `* **Insight**: ${s}`).join('\n')}
     const lowerQuestion = question.toLowerCase();
     const queryTokens = lowerQuestion.split(/\s+/).filter(w => w.length > 3);
 
-    // 1. Check specialized curriculum knowledge map first for deeper pedagogical grounding
-    const specializedMap = CurriculumKnowledgeBank.getSpecializedConceptMap(title);
-    if (specializedMap) {
-      // Check matching concept
-      const matchedConcept = specializedMap.concepts.find(c =>
-        queryTokens.some(tok => c.name.toLowerCase().includes(tok) || c.simpleExplanation.toLowerCase().includes(tok))
-      );
-      if (matchedConcept) {
-        let text = `### ${matchedConcept.name}\n\n${matchedConcept.detailedExplanation}\n\n`;
-        if (matchedConcept.formula) {
-          text += `**Governing Formula**: \`${matchedConcept.formula}\`\n\n`;
-        }
-        if (matchedConcept.commonMisconceptions && matchedConcept.commonMisconceptions.length > 0) {
-          text += `> **Common Exam Misconception**: ${matchedConcept.commonMisconceptions.join(' ')}\n\n`;
-        }
-        if (matchedConcept.approximateTimestamp) {
-          text += `*(Discussed around timestamp ${matchedConcept.approximateTimestamp.timestamp} in the lecture)*`;
-        }
-        return {
-          answer: text,
-          groundedInVideo: true
-        };
-      }
-
-      // Check matching formula
-      const matchedFormula = specializedMap.formulas.find(f =>
-        queryTokens.some(tok => f.name.toLowerCase().includes(tok) || f.formula.toLowerCase().includes(tok))
-      );
-      if (matchedFormula) {
-        const vars = matchedFormula.variables.map(v => `• **${v.symbol}**: ${v.meaning} (${v.unit})`).join('\n');
-        return {
-          answer: `### Mathematical Derivation: ${matchedFormula.name}\n\n` +
-            `**Formula**: \`${matchedFormula.formula}\`\n\n` +
-            `**Variables & Units**:\n${vars}\n\n` +
-            `**Applicability Domain**: ${matchedFormula.applicability}`,
-          groundedInVideo: true
-        };
-      }
-    }
+    // Search for matches in transcript
 
     // 2. Search for matches in transcript
     const sentences = fullText.split(/[.!?]+/).map(s => s.trim());

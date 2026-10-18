@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import {
   HelpCircle,
@@ -16,10 +16,13 @@ import {
   Code,
   ChevronDown,
   ChevronUp,
-  ShieldCheck
+  ShieldCheck,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { QuizData, QuizQuestion, QuizSubmissionResult } from '../../types';
 import { ApiService } from '../../services/api';
+import { StorageService } from '../../services/storage';
 import { TopicCoverageReportCard } from './TopicCoverageReportCard';
 import { LearningModePerformanceCard } from './LearningModePerformanceCard';
 import { QuestionReviewCard } from './QuestionReviewCard';
@@ -27,13 +30,24 @@ import { MathRenderer } from '../common/MathRenderer';
 
 interface QuizTabProps {
   quiz: QuizData | null;
+  videoId?: string;
+  analysisSessionId?: string;
   onGenerateQuiz: (difficulty: 'easy' | 'medium' | 'hard', count: number) => void;
   isGenerating: boolean;
+  generatingStage?: string;
   onExportQuiz: () => void;
   onSeek?: (seconds: number) => void;
   onGeneratePractice?: (weakConcepts: string[]) => Promise<void>;
   isGeneratingPractice?: boolean;
 }
+
+const GENERATION_STAGES = [
+  'Fetching captions',
+  'Finding concepts',
+  'Planning the quiz',
+  'Writing questions',
+  'Checking answers'
+];
 
 const COGNITIVE_LEVEL_LABELS: Record<string, { label: string; color: string }> = {
   level_1_recall: { label: 'Level 1: Recall', color: 'bg-[#EEEEFF] text-[#4938C8] border-[#DFE1F0]' },
@@ -53,8 +67,11 @@ const QUESTION_CATEGORY_LABELS: Record<string, { label: string; color: string }>
 
 export const QuizTab: React.FC<QuizTabProps> = ({
   quiz,
+  videoId,
+  analysisSessionId,
   onGenerateQuiz,
   isGenerating,
+  generatingStage,
   onExportQuiz,
   onSeek,
   onGeneratePractice,
@@ -62,6 +79,18 @@ export const QuizTab: React.FC<QuizTabProps> = ({
 }) => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [selectedCount, setSelectedCount] = useState<number>(25);
+  const [stageIdx, setStageIdx] = useState(0);
+
+  useEffect(() => {
+    if (!isGenerating) {
+      setStageIdx(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setStageIdx(prev => (prev + 1) % GENERATION_STAGES.length);
+    }, 1600);
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   // Quiz running state
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -70,6 +99,29 @@ export const QuizTab: React.FC<QuizTabProps> = ({
   const [showDesignReport, setShowDesignReport] = useState(false);
   const [evaluationResult, setEvaluationResult] = useState<QuizSubmissionResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [clearedNotice, setClearedNotice] = useState<string | null>(null);
+  const [ariaLiveAnnouncement, setAriaLiveAnnouncement] = useState<string>('');
+  const [selectedColAIdx, setSelectedColAIdx] = useState<number | null>(null);
+
+  const effectiveVideoId = videoId || quiz?.videoId || quiz?.questions?.[0]?.videoId || '';
+  const effectiveSessionId = analysisSessionId || quiz?.analysisSessionId || quiz?.questions?.[0]?.analysisSessionId || '';
+
+  // Synchronize persisted answers on mount or when quiz session changes
+  useEffect(() => {
+    if (!quiz || quiz.questions.length === 0) {
+      setUserAnswers({});
+      return;
+    }
+    if (effectiveVideoId && effectiveSessionId) {
+      const saved = StorageService.getQuizAnswers(effectiveVideoId, effectiveSessionId);
+      if (saved && Object.keys(saved).length > 0) {
+        setUserAnswers(saved);
+        return;
+      }
+    }
+    setUserAnswers({});
+  }, [effectiveVideoId, effectiveSessionId, quiz?.id]);
 
   // If no quiz yet, show generator setup
   if (!quiz || quiz.questions.length === 0) {
@@ -145,18 +197,31 @@ export const QuizTab: React.FC<QuizTabProps> = ({
             }
           }}
           disabled={isGenerating}
-          className="w-full py-3.5 px-6 rounded-2xl bg-[#4938C8] hover:bg-[#5B46E8] active:scale-[0.98] disabled:bg-[#DFE1F0] disabled:text-[#666A83] text-white font-bold text-sm transition-all shadow-cta hover:shadow-cta-hover flex items-center justify-center gap-2"
+          className="w-full py-3.5 px-6 rounded-2xl bg-[#4938C8] hover:bg-[#5B46E8] active:scale-[0.98] disabled:bg-[#4938C8] text-white font-bold text-sm transition-all shadow-cta hover:shadow-cta-hover flex flex-col items-center justify-center gap-1.5"
         >
           {isGenerating ? (
             <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Analyzing Concepts & Building {selectedCount}-Question Quiz...</span>
+              <div className="flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                <span>{generatingStage || GENERATION_STAGES[stageIdx]}...</span>
+              </div>
+              <div className="flex items-center gap-1 mt-0.5">
+                {GENERATION_STAGES.map((stg, i) => (
+                  <span
+                    key={stg}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      i <= stageIdx ? 'w-4 bg-white' : 'w-1.5 bg-white/40'
+                    }`}
+                    title={stg}
+                  />
+                ))}
+              </div>
             </>
           ) : (
-            <>
+            <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
               <span>Generate {selectedCount}-Question Concept Quiz</span>
-            </>
+            </div>
           )}
         </button>
       </div>
@@ -165,22 +230,109 @@ export const QuizTab: React.FC<QuizTabProps> = ({
 
   const questions = quiz.questions;
   const currentQuestion = questions[currentIndex];
-  const answeredCount = Object.keys(userAnswers).length;
-  const isAllAnswered = questions.every(q => Boolean(userAnswers[q.id]));
+
+  const updateAnswers = (nextAnswers: Record<string, string>) => {
+    setUserAnswers(nextAnswers);
+    if (effectiveVideoId && effectiveSessionId) {
+      StorageService.saveQuizAnswers(effectiveVideoId, effectiveSessionId, nextAnswers);
+    }
+  };
+
+  // Only count questions with non-empty string answers
+  const answeredCount = Object.keys(userAnswers).filter(
+    k => typeof userAnswers[k] === 'string' && userAnswers[k].trim().length > 0
+  ).length;
+  const unansweredCount = Math.max(0, questions.length - answeredCount);
+  const isAllAnswered = answeredCount === questions.length;
 
   const score = evaluationResult ? evaluationResult.correct : questions.reduce((acc, q) => {
     return userAnswers[q.id] === q.correctAnswer ? acc + 1 : acc;
   }, 0);
 
-  const handleSelectOption = (option: string) => {
+  // Toggle answer selection for MCQ / True-False / Combination buttons
+  const handleToggleOption = (option: string) => {
     if (isSubmitted || !currentQuestion) return;
-    setUserAnswers(prev => ({
-      ...prev,
-      [currentQuestion.id]: option
-    }));
+    const qId = currentQuestion.id;
+    const next = { ...userAnswers };
+    if (next[qId] === option) {
+      // Tap selected option again -> DESELECT IT (set to unanswered)
+      delete next[qId];
+      setClearedNotice(`Answer cleared for question ${currentIndex + 1}`);
+      setAriaLiveAnnouncement(`Answer cleared for question ${currentIndex + 1}`);
+      setTimeout(() => setClearedNotice(null), 2500);
+    } else {
+      next[qId] = option;
+      setClearedNotice(null);
+    }
+    updateAnswers(next);
   };
 
-  const handleSubmitQuiz = async () => {
+  // Clear answer button handler (resets current question to unanswered)
+  const handleClearQuestion = (questionId: string) => {
+    if (isSubmitted) return;
+    const next = { ...userAnswers };
+    delete next[questionId];
+    updateAnswers(next);
+    setSelectedColAIdx(null);
+    setClearedNotice(`Answer cleared for question ${currentIndex + 1}`);
+    setAriaLiveAnnouncement(`Answer cleared for question ${currentIndex + 1}`);
+    setTimeout(() => setClearedNotice(null), 2500);
+  };
+
+  // Remove a single matched pair for match_columns
+  const handleRemoveSinglePair = (pairToRemove: string) => {
+    if (isSubmitted || !currentQuestion) return;
+    const qId = currentQuestion.id;
+    const currentStr = userAnswers[qId] || '';
+    const currentPairs = currentStr.split(',').map(s => s.trim()).filter(Boolean);
+    const updatedPairs = currentPairs.filter(p => p !== pairToRemove);
+    const next = { ...userAnswers };
+    if (updatedPairs.length === 0) {
+      delete next[qId];
+      setClearedNotice(`All matches cleared for question ${currentIndex + 1}`);
+      setAriaLiveAnnouncement(`Matches cleared for question ${currentIndex + 1}`);
+      setTimeout(() => setClearedNotice(null), 2500);
+    } else {
+      next[qId] = updatedPairs.join(', ');
+    }
+    updateAnswers(next);
+  };
+
+  // Interactive column pairing (tap item in Col A, then item in Col B)
+  const handleColAClick = (idx: number) => {
+    if (isSubmitted) return;
+    setSelectedColAIdx(prev => (prev === idx ? null : idx));
+  };
+
+  const handleColBClick = (colBKey: string, bIdx: number) => {
+    if (isSubmitted || !currentQuestion || selectedColAIdx === null) return;
+    const qId = currentQuestion.id;
+    const colAItem = currentQuestion.columnA?.[selectedColAIdx] || '';
+    const colAMatch = colAItem.match(/^([0-9A-Za-z]+)[\.\:\-\s]/);
+    const colAKey = colAMatch ? colAMatch[1].trim() : String(selectedColAIdx + 1);
+
+    const pairKey = `${colAKey}-${colBKey}`;
+    const currentStr = userAnswers[qId] || '';
+    const currentPairs = currentStr.split(',').map(s => s.trim()).filter(Boolean);
+
+    // Remove any pair that already uses colAKey or colBKey
+    const filteredPairs = currentPairs.filter(p => {
+      const parts = p.split('-');
+      return parts[0]?.trim() !== colAKey && parts[1]?.trim() !== colBKey;
+    });
+
+    filteredPairs.push(pairKey);
+    // Sort pairs by colAKey
+    filteredPairs.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    const next = { ...userAnswers, [qId]: filteredPairs.join(', ') };
+    updateAnswers(next);
+    setSelectedColAIdx(null);
+    setClearedNotice(null);
+  };
+
+  const performSubmitQuiz = async () => {
+    setShowSubmitConfirm(false);
     setIsSubmitting(true);
     try {
       const result = await ApiService.evaluateQuiz({
@@ -200,11 +352,24 @@ export const QuizTab: React.FC<QuizTabProps> = ({
     });
   };
 
+  const handleSubmitQuiz = () => {
+    if (unansweredCount > 0) {
+      setShowSubmitConfirm(true);
+    } else {
+      performSubmitQuiz();
+    }
+  };
+
   const handleRetake = () => {
     setUserAnswers({});
+    if (effectiveVideoId && effectiveSessionId) {
+      StorageService.clearQuizAnswers(effectiveVideoId, effectiveSessionId);
+    }
     setEvaluationResult(null);
     setIsSubmitted(false);
     setCurrentIndex(0);
+    setSelectedColAIdx(null);
+    setClearedNotice(null);
   };
 
   return (
@@ -257,13 +422,13 @@ export const QuizTab: React.FC<QuizTabProps> = ({
       {/* 3. Question Runner (Before Submission) */}
       {!isSubmitted && currentQuestion ? (
         <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#DFE1F0] shadow-resting space-y-6 hover:shadow-raised transition-all duration-300">
-          {/* Progress Bar */}
-          <div>
-            <div className="flex items-center justify-between text-xs font-semibold text-[#666A83] mb-2">
+          {/* Progress Bar & Question Navigator */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs font-semibold text-[#666A83]">
               <span>
                 Question {currentIndex + 1} of {questions.length}
               </span>
-              <span>
+              <span className="font-bold text-[#4938C8]">
                 {answeredCount}/{questions.length} Answered
               </span>
             </div>
@@ -273,44 +438,107 @@ export const QuizTab: React.FC<QuizTabProps> = ({
                 style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
               />
             </div>
+
+            {/* Question Navigator (Palette 1..25) */}
+            <div>
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[#666A83] mb-1.5">
+                <span>Question Palette</span>
+                <span className="text-[10px] text-[#666A83]">
+                  {unansweredCount > 0
+                    ? `${unansweredCount} unanswered`
+                    : 'All answered'}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 p-2.5 rounded-2xl bg-[#F8F9FD] border border-[#DFE1F0]">
+                {questions.map((q, idx) => {
+                  const isAns = Boolean(userAnswers[q.id] && userAnswers[q.id].trim().length > 0);
+                  const isCurrent = idx === currentIndex;
+                  return (
+                    <button
+                      key={q.id || idx}
+                      type="button"
+                      onClick={() => setCurrentIndex(idx)}
+                      aria-label={`Jump to question ${idx + 1}, ${isAns ? 'answered' : 'unanswered'}`}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center relative active:scale-95 ${
+                        isCurrent ? 'ring-2 ring-[#4938C8] ring-offset-1 z-10 font-black' : ''
+                      } ${
+                        isAns
+                          ? 'bg-[#4938C8] text-white shadow-xs'
+                          : 'bg-white text-[#666A83] border border-[#DFE1F0] hover:bg-[#EEEEFF] hover:text-[#4938C8]'
+                      }`}
+                    >
+                      <span>{idx + 1}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
-          {/* Cognitive Level & Concept Badges */}
-          <div className="flex flex-wrap items-center gap-2">
-            {currentQuestion.questionCategory && (
-              <span className={`px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider border ${
-                QUESTION_CATEGORY_LABELS[currentQuestion.questionCategory]?.color || 'bg-[#EEEEFF] text-[#4938C8] border-[#DFE1F0]'
-              }`}>
-                {QUESTION_CATEGORY_LABELS[currentQuestion.questionCategory]?.label || currentQuestion.questionCategory}
-              </span>
-            )}
+          {/* Accessibility Live Announcement */}
+          <div className="sr-only" aria-live="polite">
+            {ariaLiveAnnouncement}
+          </div>
 
-            {currentQuestion.cognitiveLevel && (
-              <span className={`px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider border ${
-                COGNITIVE_LEVEL_LABELS[currentQuestion.cognitiveLevel]?.color || 'bg-[#F8F9FD] text-[#666A83] border-[#DFE1F0]'
-              }`}>
-                {COGNITIVE_LEVEL_LABELS[currentQuestion.cognitiveLevel]?.label || currentQuestion.cognitiveLevel}
-              </span>
-            )}
+          {/* Cognitive Level, Concept Badges, and Clear Answer Action */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {currentQuestion.questionCategory && (
+                <span className={`px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider border ${
+                  QUESTION_CATEGORY_LABELS[currentQuestion.questionCategory]?.color || 'bg-[#EEEEFF] text-[#4938C8] border-[#DFE1F0]'
+                }`}>
+                  {QUESTION_CATEGORY_LABELS[currentQuestion.questionCategory]?.label || currentQuestion.questionCategory}
+                </span>
+              )}
 
-            {currentQuestion.conceptName && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-semibold bg-[#F8F9FD] border border-[#DFE1F0] text-[#17172D]">
-                <Brain className="w-3.5 h-3.5 text-[#4938C8]" />
-                <span>Concept: {currentQuestion.conceptName}</span>
-              </span>
-            )}
+              {currentQuestion.cognitiveLevel && (
+                <span className={`px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider border ${
+                  COGNITIVE_LEVEL_LABELS[currentQuestion.cognitiveLevel]?.color || 'bg-[#F8F9FD] text-[#666A83] border-[#DFE1F0]'
+                }`}>
+                  {COGNITIVE_LEVEL_LABELS[currentQuestion.cognitiveLevel]?.label || currentQuestion.cognitiveLevel}
+                </span>
+              )}
 
-            {currentQuestion.timestampFormatted && onSeek && typeof currentQuestion.timestampSeconds === 'number' && (
-              <button
-                type="button"
-                onClick={() => onSeek(currentQuestion.timestampSeconds!)}
-                className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#4938C8] bg-[#EEEEFF] hover:bg-[#4938C8] hover:text-white px-2.5 py-1 rounded-xl transition-colors"
-                title="Jump to video explanation"
-              >
-                <Clock className="w-3 h-3" />
-                <span>Review section ({currentQuestion.timestampFormatted})</span>
-              </button>
-            )}
+              {currentQuestion.conceptName && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-semibold bg-[#F8F9FD] border border-[#DFE1F0] text-[#17172D]">
+                  <Brain className="w-3.5 h-3.5 text-[#4938C8]" />
+                  <span>Concept: {currentQuestion.conceptName}</span>
+                </span>
+              )}
+
+              {currentQuestion.timestampFormatted && onSeek && typeof currentQuestion.timestampSeconds === 'number' && (
+                <button
+                  type="button"
+                  onClick={() => onSeek(currentQuestion.timestampSeconds!)}
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#4938C8] bg-[#EEEEFF] hover:bg-[#4938C8] hover:text-white px-2.5 py-1 rounded-xl transition-colors"
+                  title="Jump to video explanation"
+                >
+                  <Clock className="w-3 h-3" />
+                  <span>Review section ({currentQuestion.timestampFormatted})</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {clearedNotice && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#4938C8] bg-[#EEEEFF] rounded-full animate-fade-in border border-[#DFE1F0]">
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Answer cleared</span>
+                </span>
+              )}
+
+              {Boolean(userAnswers[currentQuestion.id] && userAnswers[currentQuestion.id].trim().length > 0) && (
+                <button
+                  type="button"
+                  onClick={() => handleClearQuestion(currentQuestion.id)}
+                  aria-label={`Clear answer for question ${currentIndex + 1}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl text-[#4938C8] hover:text-[#3B2BA8] bg-transparent hover:bg-[#EEEEFF] border border-[#DFE1F0] hover:border-[#4938C8]/40 transition-colors duration-200 min-h-[44px] min-w-[44px] focus:outline-none focus:ring-2 focus:ring-[#4938C8]/30 active:scale-95"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Clear answer</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Question Text */}
@@ -323,13 +551,35 @@ export const QuizTab: React.FC<QuizTabProps> = ({
           {/* Dynamic Question Format Renderer */}
           {currentQuestion.questionFormat === 'fill_blank' || currentQuestion.type === 'fill_blank' ? (
             <div className="space-y-3 p-5 rounded-2xl bg-[#F8F9FD] border border-[#DFE1F0]">
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#666A83]">
-                Fill in the Blank:
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#666A83]">
+                  Fill in the Blank:
+                </label>
+                {Boolean(userAnswers[currentQuestion.id] && userAnswers[currentQuestion.id].trim().length > 0) && (
+                  <button
+                    type="button"
+                    onClick={() => handleClearQuestion(currentQuestion.id)}
+                    aria-label={`Clear input for question ${currentIndex + 1}`}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#4938C8] hover:bg-[#EEEEFF] px-2.5 py-1 rounded-lg transition-colors"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Clear input</span>
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 value={userAnswers[currentQuestion.id] || ''}
-                onChange={(e) => handleSelectOption(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const next = { ...userAnswers };
+                  if (val.trim().length === 0) {
+                    delete next[currentQuestion.id];
+                  } else {
+                    next[currentQuestion.id] = val;
+                  }
+                  updateAnswers(next);
+                }}
                 placeholder="Type your exact answer here..."
                 className="w-full px-4 py-3 rounded-xl border border-[#DFE1F0] bg-white text-[#17172D] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#4938C8]/30 focus:border-[#4938C8] transition-all"
               />
@@ -338,72 +588,196 @@ export const QuizTab: React.FC<QuizTabProps> = ({
               </p>
             </div>
           ) : currentQuestion.questionFormat === 'match_columns' || currentQuestion.type === 'match_columns' ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div className="p-4 rounded-2xl bg-[#F8F9FD] border border-[#DFE1F0] space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#4938C8]">
-                    Column A
-                  </span>
-                  <ul className="space-y-1.5 text-xs text-[#17172D] font-medium">
-                    {(currentQuestion.columnA || []).map((item, i) => (
-                      <li key={i} className="p-2.5 rounded-xl bg-white border border-[#DFE1F0]">
-                        <MathRenderer content={item} />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="p-4 rounded-2xl bg-[#F8F9FD] border border-[#DFE1F0] space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
-                    Column B
-                  </span>
-                  <ul className="space-y-1.5 text-xs text-[#17172D] font-medium">
-                    {(currentQuestion.columnB || []).map((item, i) => (
-                      <li key={i} className="p-2.5 rounded-xl bg-white border border-[#DFE1F0]">
-                        <MathRenderer content={item} />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              <div className="space-y-2.5">
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-[#666A83]">
-                  Select Matching Combination:
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {currentQuestion.options.map((option, optIdx) => {
-                    const isSelected = userAnswers[currentQuestion.id] === option;
-                    return (
-                      <button
-                        key={optIdx}
-                        type="button"
-                        onClick={() => handleSelectOption(option)}
-                        className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 active:scale-[0.99] ${
-                          isSelected
-                            ? 'border-[#4938C8] bg-[#EEEEFF] text-[#17172D] ring-2 ring-[#4938C8]/20 shadow-resting'
-                            : 'border-[#DFE1F0] bg-white hover:border-[#5B46E8]/40 hover:bg-[#EEEEFF]/30 text-[#17172D]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                              isSelected ? 'bg-[#4938C8] text-white' : 'bg-[#F8F9FD] text-[#666A83] border border-[#DFE1F0]'
+            (() => {
+              const rawAns = userAnswers[currentQuestion.id] || '';
+              const currentPairs = rawAns ? rawAns.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+              return (
+                <div className="space-y-4">
+                  <p className="text-xs text-[#666A83]">
+                    Match items between Column A and Column B by tapping, select a preset combination below, or tap an existing match to remove it.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* Column A */}
+                    <div className="p-4 rounded-2xl bg-[#F8F9FD] border border-[#DFE1F0] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#4938C8]">
+                          Column A
+                        </span>
+                        {selectedColAIdx !== null && (
+                          <span className="text-[10px] text-[#4938C8] font-bold bg-[#EEEEFF] px-2 py-0.5 rounded-full">
+                            Step 1 Selected: Tap item in Column B
+                          </span>
+                        )}
+                      </div>
+                      <ul className="space-y-2 text-xs text-[#17172D] font-medium">
+                        {(currentQuestion.columnA || []).map((item, i) => {
+                          const matchA = item.match(/^([0-9A-Za-z]+)[\.\:\-\s]/);
+                          const aKey = matchA ? matchA[1].trim() : String(i + 1);
+                          const pairedWith = currentPairs.find(p => p.startsWith(`${aKey}-`))?.split('-')[1];
+                          const isSelectedForPairing = selectedColAIdx === i;
+
+                          return (
+                            <li key={i}>
+                              <button
+                                type="button"
+                                onClick={() => handleColAClick(i)}
+                                className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 min-h-[44px] ${
+                                  isSelectedForPairing
+                                    ? 'border-[#4938C8] bg-[#EEEEFF] ring-2 ring-[#4938C8]/30 font-bold'
+                                    : pairedWith
+                                    ? 'border-emerald-300 bg-emerald-50/50'
+                                    : 'bg-white border-[#DFE1F0] hover:bg-[#EEEEFF]/40'
+                                }`}
+                              >
+                                <span><MathRenderer content={item} /></span>
+                                {pairedWith && (
+                                  <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900">
+                                    Matched: {pairedWith}
+                                  </span>
+                                )}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+
+                    {/* Column B */}
+                    <div className="p-4 rounded-2xl bg-[#F8F9FD] border border-[#DFE1F0] space-y-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                        Column B
+                      </span>
+                      <ul className="space-y-2 text-xs text-[#17172D] font-medium">
+                        {(currentQuestion.columnB || []).map((item, j) => {
+                          const matchB = item.match(/^([0-9A-Za-z]+)[\.\:\-\s]/);
+                          const bKey = matchB ? matchB[1].trim() : String.fromCharCode(65 + j);
+                          const pairedWithA = currentPairs.find(p => p.endsWith(`-${bKey}`))?.split('-')[0];
+
+                          return (
+                            <li key={j}>
+                              <button
+                                type="button"
+                                onClick={() => handleColBClick(bKey, j)}
+                                disabled={selectedColAIdx === null && !pairedWithA}
+                                className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 min-h-[44px] ${
+                                  selectedColAIdx !== null
+                                    ? 'border-emerald-400 bg-emerald-50 hover:bg-emerald-100 cursor-pointer ring-1 ring-emerald-400/30'
+                                    : pairedWithA
+                                    ? 'border-emerald-300 bg-emerald-50/50'
+                                    : 'bg-white border-[#DFE1F0] cursor-default'
+                                }`}
+                              >
+                                <span><MathRenderer content={item} /></span>
+                                {pairedWithA && (
+                                  <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-200 text-emerald-900">
+                                    Matched: {pairedWithA}
+                                  </span>
+                                )}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Matched Pairs Badges & Clear all matches */}
+                  {currentPairs.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-[#F8F9FD] border border-[#DFE1F0] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#666A83]">
+                          Current Matches ({currentPairs.length} pair{currentPairs.length > 1 ? 's' : ''}):
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleClearQuestion(currentQuestion.id)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2 py-1 rounded-lg transition-colors"
+                          aria-label={`Clear all matches for question ${currentIndex + 1}`}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Clear all matches</span>
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {currentPairs.map(pair => (
+                          <button
+                            key={pair}
+                            type="button"
+                            onClick={() => handleRemoveSinglePair(pair)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#EEEEFF] text-[#4938C8] hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 border border-[#DFE1F0] transition-colors group min-h-[44px]"
+                            title={`Tap to remove pair ${pair}`}
+                            aria-label={`Remove matched pair ${pair}`}
+                          >
+                            <span>{pair}</span>
+                            <X className="w-3.5 h-3.5 text-[#4938C8] group-hover:text-rose-700" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Combination Selection Cards (MCQ format) */}
+                  <div className="space-y-2.5">
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-[#666A83]">
+                      Or Select Matching Combination (Tap again to deselect):
+                    </span>
+                    <div
+                      role="radiogroup"
+                      aria-label={`Matching options for question ${currentIndex + 1}`}
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-2.5"
+                    >
+                      {currentQuestion.options.map((option, optIdx) => {
+                        const isSelected = userAnswers[currentQuestion.id] === option;
+                        return (
+                          <button
+                            key={optIdx}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            tabIndex={0}
+                            aria-label={`Combination ${String.fromCharCode(65 + optIdx)}: ${option}${isSelected ? ' (selected, click to deselect)' : ''}`}
+                            onClick={() => handleToggleOption(option)}
+                            onKeyDown={(e) => {
+                              if (e.key === ' ' || e.key === 'Enter') {
+                                e.preventDefault();
+                                handleToggleOption(option);
+                              }
+                            }}
+                            className={`w-full text-left p-3.5 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 active:scale-[0.99] min-h-[44px] ${
+                              isSelected
+                                ? 'border-[#4938C8] bg-[#EEEEFF] text-[#17172D] ring-2 ring-[#4938C8]/20 shadow-resting'
+                                : 'border-[#DFE1F0] bg-white hover:border-[#5B46E8]/40 hover:bg-[#EEEEFF]/30 text-[#17172D]'
                             }`}
                           >
-                            {String.fromCharCode(65 + optIdx)}
-                          </div>
-                          <span className="text-xs font-mono font-semibold">
-                            <MathRenderer content={option} />
-                          </span>
-                        </div>
-                        {isSelected && <Check className="w-4 h-4 text-[#4938C8] shrink-0" />}
-                      </button>
-                    );
-                  })}
+                            <div className="flex items-center gap-2.5">
+                              <div
+                                className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                                  isSelected ? 'bg-[#4938C8] text-white' : 'bg-[#F8F9FD] text-[#666A83] border border-[#DFE1F0]'
+                                }`}
+                              >
+                                {String.fromCharCode(65 + optIdx)}
+                              </div>
+                              <span className="text-xs font-mono font-semibold">
+                                <MathRenderer content={option} />
+                              </span>
+                            </div>
+                            {isSelected && <Check className="w-4 h-4 text-[#4938C8] shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()
           ) : currentQuestion.questionFormat === 'true_false' || currentQuestion.type === 'true_false' ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div
+              role="radiogroup"
+              aria-label={`Question ${currentIndex + 1}: ${currentQuestion.question}`}
+              className="grid grid-cols-2 gap-4"
+            >
               {currentQuestion.options.map((option, optIdx) => {
                 const isSelected = userAnswers[currentQuestion.id] === option;
                 const isTrueOpt = option.toLowerCase() === 'true' || option === 'सत्य' || option === 'સાચું' || option.toLowerCase() === 'verdadero';
@@ -411,8 +785,18 @@ export const QuizTab: React.FC<QuizTabProps> = ({
                   <button
                     key={optIdx}
                     type="button"
-                    onClick={() => handleSelectOption(option)}
-                    className={`p-6 rounded-2xl border text-center transition-all duration-200 flex flex-col items-center justify-center gap-2 active:scale-[0.98] ${
+                    role="radio"
+                    aria-checked={isSelected}
+                    tabIndex={0}
+                    aria-label={`${option}${isSelected ? ' (selected, click to deselect)' : ''}`}
+                    onClick={() => handleToggleOption(option)}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        handleToggleOption(option);
+                      }
+                    }}
+                    className={`p-6 rounded-2xl border text-center transition-all duration-200 flex flex-col items-center justify-center gap-2 active:scale-[0.98] min-h-[44px] ${
                       isSelected
                         ? isTrueOpt
                           ? 'border-emerald-500 bg-emerald-50 text-emerald-950 ring-2 ring-emerald-500/30 shadow-resting font-bold'
@@ -423,7 +807,7 @@ export const QuizTab: React.FC<QuizTabProps> = ({
                     <span className="text-lg font-black">{option}</span>
                     {isSelected && (
                       <span className="text-[11px] font-bold uppercase tracking-wider text-[#4938C8]">
-                        Selected
+                        Selected (Tap to deselect)
                       </span>
                     )}
                   </button>
@@ -432,15 +816,29 @@ export const QuizTab: React.FC<QuizTabProps> = ({
             </div>
           ) : (
             /* Options List (Numerical / Conceptual) */
-            <div className="space-y-3">
+            <div
+              role="radiogroup"
+              aria-label={`Question ${currentIndex + 1}: ${currentQuestion.question}`}
+              className="space-y-3"
+            >
               {currentQuestion.options.map((option, optIdx) => {
                 const isSelected = userAnswers[currentQuestion.id] === option;
                 return (
                   <button
                     key={optIdx}
                     type="button"
-                    onClick={() => handleSelectOption(option)}
-                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 active:scale-[0.99] ${
+                    role="radio"
+                    aria-checked={isSelected}
+                    tabIndex={0}
+                    aria-label={`${String.fromCharCode(65 + optIdx)}: ${option}${isSelected ? ' (selected, click to deselect)' : ''}`}
+                    onClick={() => handleToggleOption(option)}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        handleToggleOption(option);
+                      }
+                    }}
+                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 active:scale-[0.99] min-h-[44px] ${
                       isSelected
                         ? 'border-[#4938C8] bg-[#EEEEFF] text-[#17172D] ring-2 ring-[#4938C8]/20 shadow-resting'
                         : 'border-[#DFE1F0] bg-white hover:border-[#5B46E8]/40 hover:bg-[#EEEEFF]/30 hover:shadow-resting hover:-translate-y-0.5 text-[#17172D]'
@@ -470,37 +868,46 @@ export const QuizTab: React.FC<QuizTabProps> = ({
           {/* Navigation Controls */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-[#DFE1F0]">
             <button
+              type="button"
               onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
               disabled={currentIndex === 0}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl border border-[#DFE1F0] bg-white disabled:opacity-40 hover:bg-[#EEEEFF] text-[#4938C8] transition-colors active:scale-[0.98]"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl border border-[#DFE1F0] bg-white disabled:opacity-40 hover:bg-[#EEEEFF] text-[#4938C8] transition-colors active:scale-[0.98] min-h-[44px]"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Previous</span>
             </button>
 
             <div className="flex items-center gap-3">
-              {questions.length - answeredCount > 0 && (
+              {unansweredCount > 0 && (
                 <span className="text-[11px] text-[#666A83] font-medium hidden sm:inline">
-                  {questions.length - answeredCount} unanswered (scored as incorrect)
+                  {unansweredCount} unanswered (scored as incorrect)
                 </span>
               )}
 
               {currentIndex < questions.length - 1 ? (
                 <button
+                  type="button"
                   onClick={() => setCurrentIndex(prev => Math.min(questions.length - 1, prev + 1))}
-                  className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-xl bg-[#4938C8] hover:bg-[#5B46E8] text-white shadow-cta hover:shadow-cta-hover transition-all active:scale-[0.98]"
+                  className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold rounded-xl bg-[#4938C8] hover:bg-[#5B46E8] text-white shadow-cta hover:shadow-cta-hover transition-all active:scale-[0.98] min-h-[44px]"
                 >
                   <span>Next Question</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={handleSubmitQuiz}
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white transition-all shadow-md active:scale-[0.98]"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white transition-all shadow-md active:scale-[0.98] min-h-[44px]"
                 >
                   <Award className="w-4 h-4" />
-                  <span>{isSubmitting ? 'Evaluating Submission...' : 'Submit Quiz & View Analysis'}</span>
+                  <span>
+                    {isSubmitting
+                      ? 'Evaluating Submission...'
+                      : unansweredCount > 0
+                      ? `Submit Quiz (${unansweredCount} unanswered)`
+                      : 'Submit Quiz & View Analysis'}
+                  </span>
                 </button>
               )}
             </div>
@@ -626,6 +1033,59 @@ export const QuizTab: React.FC<QuizTabProps> = ({
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unanswered Questions Confirmation Dialog */}
+      {showSubmitConfirm && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-dialog-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in"
+        >
+          <div className="bg-white rounded-3xl border border-[#DFE1F0] shadow-modal max-w-md w-full p-6 sm:p-7 space-y-5 animate-scale-up">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 id="confirm-dialog-title" className="text-base font-bold text-[#17172D]">
+                  Unanswered Questions Confirmation
+                </h4>
+                <p className="text-xs text-[#666A83]">
+                  Please review before final submission
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 leading-relaxed space-y-1.5">
+              <p>
+                You have <strong className="font-bold text-amber-900">{unansweredCount} unanswered question{unansweredCount > 1 ? 's' : ''}</strong>.
+              </p>
+              <p className="text-[#666A83]">
+                Unanswered questions will be scored as incorrect (Result: FALSE). Submit anyway?
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowSubmitConfirm(false)}
+                className="px-4 py-2.5 rounded-xl border border-[#DFE1F0] bg-white hover:bg-[#EEEEFF] text-[#4938C8] font-semibold text-xs transition-colors active:scale-95 min-h-[44px]"
+              >
+                Review Questions (Go Back)
+              </button>
+              <button
+                type="button"
+                onClick={performSubmitQuiz}
+                disabled={isSubmitting}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-cta transition-colors active:scale-95 min-h-[44px]"
+              >
+                Submit Anyway
+              </button>
             </div>
           </div>
         </div>

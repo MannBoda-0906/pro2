@@ -17,7 +17,7 @@ export class S12_TranslationService {
     targetLanguage: string;
     client?: GoogleGenAI | null;
   }): Promise<QuizData> {
-    const { quiz, targetLanguage, client } = params;
+    let { quiz, targetLanguage, client } = params;
     const lang = this.normalizeLanguage(targetLanguage);
 
     if (lang.code === 'en') {
@@ -31,8 +31,13 @@ export class S12_TranslationService {
       if (client) {
         try {
           transQ = await this.translateQuestionWithAI(q, lang, client);
-        } catch (err) {
-          console.warn(`[S12_TranslationService] AI translation failed for Q#${q.slotIndex}, using deterministic glossary:`, err);
+        } catch (err: any) {
+          if (err?.status === 429 || err?.message?.includes('429') || err?.message?.includes('RESOURCE_EXHAUSTED')) {
+            client = null;
+            console.warn(`[S12_TranslationService] Quota/rate limit 429 encountered at Q#${q.slotIndex}, switching to deterministic glossary for remainder.`);
+          } else {
+            console.warn(`[S12_TranslationService] AI translation failed for Q#${q.slotIndex}, using deterministic glossary:`, err?.message || err);
+          }
         }
       }
 
