@@ -2,6 +2,9 @@ import {
   ConceptCoverageClassification,
   ConceptHierarchyItem,
   ConceptUnderstandingObject,
+  KnowledgeMapConcept,
+  KnowledgeMapSubtopic,
+  KnowledgeMapTopic,
   PersistedKnowledgeMap,
   StructuredEvidence
 } from '../../types/index.js';
@@ -99,11 +102,58 @@ export class S5_KnowledgeMap {
       }
     }
 
+    // Build hierarchical topics array matching Requirement 5
+    const topicsMap = new Map<string, Map<string, KnowledgeMapConcept[]>>();
+    const mainTopic = evidence.topic || 'Core Curriculum Concepts';
+
+    allowedConceptIds.forEach(cid => {
+      const u = understandings[cid];
+      if (!u) return;
+
+      const subtopicName = (u.examples && u.examples.length > 0)
+        ? u.examples[0]
+        : `${u.conceptName} Principles`;
+
+      const conceptEntry: KnowledgeMapConcept = {
+        conceptId: cid,
+        concept: u.conceptName,
+        explanation: u.meaning || u.definition || `Instructional coverage of ${u.conceptName}`,
+        formulas: u.formula ? [u.formula] : [],
+        principles: u.principle ? [u.principle] : [],
+        examples: u.examples || [],
+        applications: u.applications || [],
+        problemMethods: u.solvingMethods || [],
+        evidence: u.evidence || []
+      };
+
+      if (!topicsMap.has(mainTopic)) {
+        topicsMap.set(mainTopic, new Map());
+      }
+      const subMap = topicsMap.get(mainTopic)!;
+      if (!subMap.has(subtopicName)) {
+        subMap.set(subtopicName, []);
+      }
+      subMap.get(subtopicName)!.push(conceptEntry);
+    });
+
+    const hierarchicalTopics: KnowledgeMapTopic[] = Array.from(topicsMap.entries()).map(([top, subMap], tIdx) => ({
+      topicId: `topic_${tIdx + 1}`,
+      topic: top,
+      subtopics: Array.from(subMap.entries()).map(([sub, conceptList], sIdx) => ({
+        subtopicId: `subtopic_${tIdx + 1}_${sIdx + 1}`,
+        subtopic: sub,
+        concepts: conceptList
+      }))
+    }));
+
     return {
+      videoId: evidence.videoId,
       subject: evidence.subject,
+      classLevel: evidence.academicLevel,
       academicLevel: evidence.academicLevel,
       chapter: evidence.chapter,
       topic: evidence.topic,
+      topics: hierarchicalTopics,
       concepts: understandings,
       conceptList: concepts.filter(c => allowedConceptIds.includes(c.id)),
       coverageClassifications: classifications,

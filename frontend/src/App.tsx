@@ -1297,6 +1297,9 @@ export const App: React.FC = () => {
         analysisSessionId={currentSessionRef.current?.analysisSessionId}
         generationAttemptId={currentSessionRef.current?.generationAttemptId || generationAttemptId}
         videoId={activeVideo?.metadata?.id || currentSessionRef.current?.videoId}
+        videoTitle={activeVideo?.metadata?.title}
+        chunkCount={activeQuiz?.pipelineEvidence?.chunks?.length || activeQuiz?.structuredEvidence?.chunks?.length}
+        groundedCount={activeQuiz?.questions?.filter(q => q.evidenceReference || q.relevanceScore !== undefined)?.length}
         transcriptHash={activeQuiz?.transcriptHash}
         currentStage={isLoading ? loadingStep : isGeneratingQuiz ? quizGeneratingStage : activeQuiz ? 'Quiz Ready' : 'Idle'}
         conceptCount={activeQuiz?.persistedKnowledgeMap?.allowedConceptIds?.length || activeQuiz?.topicCoverageReport?.coveredConcepts?.length || 0}

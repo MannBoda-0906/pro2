@@ -11,6 +11,7 @@ export interface RelevanceValidationResult {
     | 'ACCEPT_CONCEPT_SPECIFIC'
     | 'REJECT_GENERIC_TEMPLATE'
     | 'REJECT_TITLE_DERIVED'
+    | 'REJECT_SCORE_BELOW_THRESHOLD'
     | 'REJECT_FORMULA_MISMATCH'
     | 'REJECT_BLIND_CLASSIFICATION_MISMATCH'
     | 'REJECT_MISSING_TERMINOLOGY'
@@ -114,12 +115,47 @@ export class ConceptRelevanceValidator {
       return blindCheck;
     }
 
+    // Calculate internal relevance score from 0-100 (Requirement 12)
+    let score = 100;
+    if (!conceptObj.evidence || conceptObj.evidence.length === 0) {
+      score -= 30;
+    }
+    const fullQText = `${qText} ${solText}`;
+    for (const untaught of knowledgeMap.untaughtChapterConcepts || []) {
+      if (untaught.length > 4 && fullQText.includes(untaught.toLowerCase())) {
+        score -= 25;
+        break;
+      }
+    }
+    const conceptTokens = conceptObj.conceptName.toLowerCase().split(/\s+/).filter(t => t.length > 3);
+    const hasConceptMention = conceptTokens.length === 0 || conceptTokens.some(t => fullQText.includes(t));
+    if (!hasConceptMention) {
+      score -= 15;
+    }
+    if (question.questionFormat === 'numerical' && conceptObj.formula) {
+      if (!formulaUsed || formulaUsed === 'Conceptual Verification') {
+        score -= 15;
+      }
+    }
+
+    question.relevanceScore = Math.max(0, score);
+    if (score < 85) {
+      question.relevanceVerdict = 'REJECT_SCORE_BELOW_THRESHOLD';
+      return {
+        valid: false,
+        verdict: 'REJECT_SCORE_BELOW_THRESHOLD',
+        score,
+        reason: `Relevance score ${score}/100 is below required threshold of 85`
+      };
+    }
+
     question.relevanceVerdict = 'ACCEPT_CONCEPT_SPECIFIC';
     return {
       valid: true,
       verdict: 'ACCEPT_CONCEPT_SPECIFIC',
       formulaUsed,
       variablesUsed,
+      score,
       bestMatchingConceptId: conceptObj.conceptId
     };
   }

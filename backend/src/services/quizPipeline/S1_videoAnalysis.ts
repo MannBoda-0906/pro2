@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { StructuredEvidence, TranscriptSegment } from '../../types/index.js';
+import { StructuredEvidence, TranscriptChunk, TranscriptSegment } from '../../types/index.js';
 
 export class S1_VideoAnalysis {
   /**
@@ -25,20 +25,88 @@ export class S1_VideoAnalysis {
   }
 
   /**
+   * Splits transcript into meaningful sequential chunks for complete video analysis.
+   * Every chunk contains videoId, chunkId, chunkIndex, startTime, endTime, transcriptText.
+   */
+  public static splitIntoChunks(params: {
+    videoId: string;
+    segments: TranscriptSegment[];
+    chunkDurationSec?: number;
+    maxCharsPerChunk?: number;
+  }): TranscriptChunk[] {
+    const { videoId, segments, chunkDurationSec = 300, maxCharsPerChunk = 4000 } = params;
+    if (segments.length === 0) return [];
+
+    const chunks: TranscriptChunk[] = [];
+    let currentSegments: TranscriptSegment[] = [];
+    let currentChars = 0;
+    let chunkStart = segments[0].start || 0;
+    let chunkIndex = 1;
+
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      const segText = seg.text.trim();
+      const segEnd = (seg.start || 0) + (seg.duration || 0);
+
+      currentSegments.push(seg);
+      currentChars += segText.length;
+
+      const durationSoFar = segEnd - chunkStart;
+      const shouldSplit =
+        (durationSoFar >= chunkDurationSec || currentChars >= maxCharsPerChunk) &&
+        i < segments.length - 1;
+
+      if (shouldSplit) {
+        chunks.push({
+          videoId,
+          chunkId: `chunk_${chunkIndex}`,
+          chunkIndex,
+          startTime: chunkStart,
+          endTime: segEnd,
+          transcriptText: currentSegments.map(s => s.text).join(' '),
+          segments: [...currentSegments]
+        });
+        chunkIndex++;
+        currentSegments = [];
+        currentChars = 0;
+        chunkStart = segments[i + 1]?.start || segEnd;
+      }
+    }
+
+    if (currentSegments.length > 0) {
+      const lastSeg = currentSegments[currentSegments.length - 1];
+      const lastEnd = (lastSeg.start || 0) + (lastSeg.duration || 0);
+      chunks.push({
+        videoId,
+        chunkId: `chunk_${chunkIndex}`,
+        chunkIndex,
+        startTime: chunkStart,
+        endTime: lastEnd,
+        transcriptText: currentSegments.map(s => s.text).join(' '),
+        segments: [...currentSegments]
+      });
+    }
+
+    return chunks;
+  }
+
+  /**
    * Analyzes the video transcript and extracts structured educational evidence.
    * STRICT GROUNDING RULE: Evidence is derived exclusively from the spoken transcript.
    * The video title is treated purely as an optional metadata hint, NEVER as evidence.
    */
   public static async analyzeVideo(params: {
     title?: string;
+    videoId?: string;
     transcript: TranscriptSegment[];
     client?: GoogleGenAI | null;
   }): Promise<StructuredEvidence> {
-    const { title = '', transcript, client } = params;
+    const { title = '', videoId = 'current_video', transcript, client } = params;
     const cleanSegments = this.cleanTranscriptEvidence(transcript);
     const fullText = cleanSegments.map(s => s.text).join(' ');
+    const chunks = this.splitIntoChunks({ videoId, segments: cleanSegments });
 
-    console.log(`[S1_VideoAnalysis] Cleaned transcript: ${cleanSegments.length} segments, ${fullText.length} characters.`);
+    console.log(`[S1_VideoAnalysis] Cleaned transcript: ${cleanSegments.length} segments, ${chunks.length} chunks, ${fullText.length} characters.`);
 
     if (cleanSegments.length === 0 || fullText.trim().length < 80) {
       const err: any = new Error(
@@ -99,14 +167,14 @@ Return ONLY a valid JSON object matching this schema without markdown code fence
         const text = res.text || '';
         const parsed = this.parseJsonSafely<StructuredEvidence>(text);
         if (parsed && parsed.definitions && Array.isArray(parsed.definitions) && parsed.definitions.length > 0) {
-          return this.sanitizeEvidence(parsed, cleanSegments);
+          return this.sanitizeEvidence(parsed, cleanSegments, videoId, chunks);
         }
       } catch (err) {
         console.warn('[S1_VideoAnalysis] Gemini extraction failed or quota exceeded, using deterministic transcript extraction:', err);
       }
     }
 
-    return this.extractLocally(cleanSegments);
+    return this.extractLocally(cleanSegments, videoId);
   }
 
   private static parseJsonSafely<T>(str: string): T | null {
@@ -126,11 +194,20 @@ Return ONLY a valid JSON object matching this schema without markdown code fence
     }
   }
 
-  private static sanitizeEvidence(ev: Partial<StructuredEvidence>, segments: TranscriptSegment[]): StructuredEvidence {
+  private static sanitizeEvidence(
+    ev: Partial<StructuredEvidence>,
+    segments: TranscriptSegment[],
+    videoId?: string,
+    chunks?: TranscriptChunk[]
+  ): StructuredEvidence {
     const fullText = segments.map(s => s.text).join(' ');
     const fallbackTopic = this.deriveTopicFromTranscript(segments);
+    const validChunks = chunks || this.splitIntoChunks({ videoId: videoId || 'current_video', segments });
 
     return {
+      videoId: videoId || ev.videoId || 'current_video',
+      chunksCount: validChunks.length,
+      chunks: validChunks,
       subject: ev.subject || this.inferSubject(fullText),
       academicLevel: ev.academicLevel || 'Grade 11-12 / College Prep',
       chapter: ev.chapter || fallbackTopic,
@@ -236,10 +313,11 @@ Return ONLY a valid JSON object matching this schema without markdown code fence
    * Deterministic evidence extraction derived strictly from the transcript text.
    * Completely independent of the video title and zero hardcoded subject cheats.
    */
-  public static extractLocally(segments: TranscriptSegment[]): StructuredEvidence {
+  public static extractLocally(segments: TranscriptSegment[], videoId?: string): StructuredEvidence {
     const fullText = segments.map(s => s.text).join(' ');
     const subject = this.inferSubject(fullText);
     const topic = this.deriveTopicFromTranscript(segments);
+    const chunks = this.splitIntoChunks({ videoId: videoId || 'current_video', segments });
 
     const definitions: StructuredEvidence['definitions'] = [];
     const formulas: StructuredEvidence['formulas'] = [];
@@ -355,6 +433,9 @@ Return ONLY a valid JSON object matching this schema without markdown code fence
     }
 
     return {
+      videoId: videoId || 'current_video',
+      chunksCount: chunks.length,
+      chunks,
       subject,
       academicLevel: 'High School / Undergraduate',
       chapter: topic,

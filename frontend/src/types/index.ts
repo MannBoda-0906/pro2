@@ -149,6 +149,19 @@ export interface QuizQuestion {
   explanation: string;
   mistakeExplanation?: string;
   correctMethod?: string;
+  questionId?: string;
+  questionType?: QuestionType;
+  topicId?: string;
+  subtopicId?: string;
+  evidenceReference?: string;
+  relevanceScore?: number;
+  evidenceRef?: {
+    conceptId: string;
+    sourceSegments?: Array<{ text: string; start?: number; duration?: number; timestamp?: string }>;
+    sourceVideoId?: string;
+  };
+  formulaUsed?: string;
+  relevanceVerdict?: string;
   distractorRationale?: { option: string; errorType: string }[];
   misconceptionExploration?: string;
   validationStatus?: QuestionValidationRecord;
@@ -328,6 +341,8 @@ export interface QuizData {
   conceptKnowledgeMap?: ConceptKnowledgeMap;
   persistedKnowledgeMap?: any;
   quizBlueprint?: any;
+  pipelineEvidence?: any;
+  structuredEvidence?: any;
   topicCoverageReport?: TopicCoverageReport;
   blueprint?: QuizBlueprintItem[];
   questions: QuizQuestion[];

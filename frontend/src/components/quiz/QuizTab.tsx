@@ -107,9 +107,38 @@ export const QuizTab: React.FC<QuizTabProps> = ({
   const effectiveVideoId = videoId || quiz?.videoId || quiz?.questions?.[0]?.videoId || '';
   const effectiveSessionId = analysisSessionId || quiz?.analysisSessionId || quiz?.questions?.[0]?.analysisSessionId || '';
 
+  // Strict video isolation validation check:
+  // The quiz MUST belong exclusively to the CURRENT video and active session.
+  const isCurrentVideo = Boolean(
+    !videoId || !quiz?.videoId || quiz.videoId === videoId
+  );
+  const isCurrentSession = Boolean(
+    !analysisSessionId || !quiz?.analysisSessionId || quiz.analysisSessionId === analysisSessionId
+  );
+  const allQuestionsMatchVideo = Boolean(
+    !videoId || !quiz?.questions || quiz.questions.every(q => !q.videoId || q.videoId === videoId)
+  );
+
+  const isQuizValidForCurrentVideo = Boolean(
+    quiz &&
+    quiz.questions &&
+    quiz.questions.length > 0 &&
+    isCurrentVideo &&
+    isCurrentSession &&
+    allQuestionsMatchVideo
+  );
+
+  // Reset quiz interactive state when switching video or analysis session
+  useEffect(() => {
+    setCurrentIndex(0);
+    setIsSubmitted(false);
+    setEvaluationResult(null);
+    setSelectedColAIdx(null);
+  }, [videoId, analysisSessionId]);
+
   // Synchronize persisted answers on mount or when quiz session changes
   useEffect(() => {
-    if (!quiz || quiz.questions.length === 0) {
+    if (!isQuizValidForCurrentVideo) {
       setUserAnswers({});
       return;
     }
@@ -121,12 +150,18 @@ export const QuizTab: React.FC<QuizTabProps> = ({
       }
     }
     setUserAnswers({});
-  }, [effectiveVideoId, effectiveSessionId, quiz?.id]);
+  }, [effectiveVideoId, effectiveSessionId, quiz?.id, isQuizValidForCurrentVideo]);
 
-  // If no quiz yet, show generator setup
-  if (!quiz || quiz.questions.length === 0) {
+  // If no quiz yet or quiz belongs to a previous video, show generator setup
+  if (!quiz || !isQuizValidForCurrentVideo) {
     return (
       <div className="p-8 sm:p-12 rounded-3xl bg-white border border-[#DFE1F0] shadow-resting text-center max-w-xl mx-auto animate-fade-in hover:shadow-raised transition-all duration-300">
+        {quiz && (!isCurrentVideo || !allQuestionsMatchVideo) && (
+          <div className="mb-6 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center justify-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <span>Active video changed. Generate a new quiz grounded exclusively in this video.</span>
+          </div>
+        )}
         <div className="w-16 h-16 rounded-2xl bg-[#EEEEFF] text-[#4938C8] flex items-center justify-center mx-auto mb-5 shadow-xs">
           <HelpCircle className="w-8 h-8" />
         </div>

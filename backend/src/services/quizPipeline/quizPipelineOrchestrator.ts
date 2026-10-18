@@ -152,6 +152,7 @@ export class QuizPipelineOrchestrator {
       try {
         evidence = await S1_VideoAnalysis.analyzeVideo({
           title,
+          videoId: canonicalVideoId,
           transcript,
           client: effectiveClient
         });

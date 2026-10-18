@@ -109,18 +109,24 @@ export interface QuestionValidationRecord {
 
 export interface QuizQuestion {
   id: string;
+  questionId?: string;
   analysisSessionId?: string;
   generationAttemptId?: string;
   videoId?: string;
   slotIndex?: number;
   type: QuestionType;
+  questionType?: QuestionType;
   questionFormat?: QuestionFormat;
   questionCategory?: QuestionCategory;
   topic?: string;
+  topicId?: string;
   subtopic?: string;
+  subtopicId?: string;
   concept?: string;
   conceptName?: string;
   conceptId?: string;
+  evidenceReference?: string;
+  relevanceScore?: number;
   methodId?: string;
   problemArchetype?: string;
   archetypeId?: string;
@@ -165,7 +171,20 @@ export interface QuizQuestion {
   timestampFormatted?: string;
 }
 
+export interface TranscriptChunk {
+  videoId: string;
+  chunkId: string;
+  chunkIndex: number;
+  startTime: number;
+  endTime: number;
+  transcriptText: string;
+  segments: TranscriptSegment[];
+}
+
 export interface StructuredEvidence {
+  videoId?: string;
+  chunksCount?: number;
+  chunks?: TranscriptChunk[];
   subject: string;
   academicLevel: string;
   chapter: string;
@@ -229,11 +248,38 @@ export interface ConceptUnderstandingObject {
   sourceVideoId?: string;
 }
 
+export interface KnowledgeMapConcept {
+  conceptId: string;
+  concept: string;
+  explanation: string;
+  formulas: string[];
+  principles: string[];
+  examples: string[];
+  applications: string[];
+  problemMethods: string[];
+  evidence: Array<{ text: string; start?: number; duration?: number; timestamp?: string }>;
+}
+
+export interface KnowledgeMapSubtopic {
+  subtopicId?: string;
+  subtopic: string;
+  concepts: KnowledgeMapConcept[];
+}
+
+export interface KnowledgeMapTopic {
+  topicId?: string;
+  topic: string;
+  subtopics: KnowledgeMapSubtopic[];
+}
+
 export interface PersistedKnowledgeMap {
+  videoId?: string;
   subject: string;
+  classLevel?: string;
   academicLevel: string;
   chapter: string;
   topic: string;
+  topics?: KnowledgeMapTopic[];
   concepts: Record<string, ConceptUnderstandingObject>;
   conceptList: ConceptHierarchyItem[];
   coverageClassifications: Record<string, ConceptCoverageClassification>;
@@ -261,6 +307,8 @@ export interface BlueprintSlot {
   slotIndex: number; // 1 to 25
   analysisSessionId?: string;
   videoId?: string;
+  topicId?: string;
+  subtopicId?: string;
   conceptId: string;
   subconcept: string;
   questionFormat: QuestionFormat;

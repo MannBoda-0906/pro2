@@ -6,6 +6,9 @@ export interface DevDiagnosticData {
   analysisSessionId?: string | null;
   generationAttemptId?: string | null;
   videoId?: string | null;
+  videoTitle?: string | null;
+  chunkCount?: number;
+  groundedCount?: number;
   transcriptHash?: string | null;
   currentStage?: string;
   conceptCount?: number;
@@ -31,6 +34,9 @@ export const DevDebugPanel: React.FC<DevDiagnosticData> = ({
   analysisSessionId,
   generationAttemptId = 'att_1',
   videoId,
+  videoTitle,
+  chunkCount = 0,
+  groundedCount = 0,
   transcriptHash,
   currentStage = 'Idle',
   conceptCount = 0,
@@ -99,6 +105,12 @@ export const DevDebugPanel: React.FC<DevDiagnosticData> = ({
               <span className="text-slate-400">Current Stage:</span>
               <span className="font-bold text-indigo-300">{currentStage}</span>
             </div>
+            {videoTitle && (
+              <div>
+                <span className="text-slate-400">Video Title: </span>
+                <span className="text-white font-medium truncate block" title={videoTitle}>{videoTitle}</span>
+              </div>
+            )}
             <div>
               <span className="text-slate-400">Video ID: </span>
               <span className="text-cyan-300 font-mono">{videoId || 'none'}</span>
@@ -119,19 +131,25 @@ export const DevDebugPanel: React.FC<DevDiagnosticData> = ({
             )}
           </div>
 
-          {/* Concepts & Blueprint Counts */}
-          <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-            <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-              <span className="text-slate-400 block">Concepts</span>
-              <span className="text-sm font-bold text-emerald-400">{conceptCount}</span>
+          {/* Concepts, Chunks & Grounding Counts */}
+          <div className="grid grid-cols-4 gap-1.5 text-center text-[10px]">
+            <div className="p-1.5 rounded-lg bg-slate-900/60 border border-slate-800">
+              <span className="text-slate-400 block text-[9px]">Chunks</span>
+              <span className="text-xs font-bold text-sky-400">{chunkCount || '—'}</span>
             </div>
-            <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-              <span className="text-slate-400 block">Covered</span>
-              <span className="text-sm font-bold text-cyan-400">{coveredConcepts}</span>
+            <div className="p-1.5 rounded-lg bg-slate-900/60 border border-slate-800">
+              <span className="text-slate-400 block text-[9px]">Concepts</span>
+              <span className="text-xs font-bold text-emerald-400">{conceptCount}</span>
             </div>
-            <div className="p-2 rounded-lg bg-slate-900/60 border border-slate-800">
-              <span className="text-slate-400 block">Blueprint</span>
-              <span className="text-sm font-bold text-amber-400">{blueprintCount || 25}</span>
+            <div className="p-1.5 rounded-lg bg-slate-900/60 border border-slate-800">
+              <span className="text-slate-400 block text-[9px]">Covered</span>
+              <span className="text-xs font-bold text-cyan-400">{coveredConcepts}</span>
+            </div>
+            <div className="p-1.5 rounded-lg bg-slate-900/60 border border-slate-800">
+              <span className="text-slate-400 block text-[9px]">Grounded</span>
+              <span className="text-xs font-bold text-amber-400">
+                {groundedCount || questions.filter(q => q.evidenceReference || q.relevanceScore !== undefined).length}
+              </span>
             </div>
           </div>
 
@@ -211,13 +229,36 @@ export const DevDebugPanel: React.FC<DevDiagnosticData> = ({
               <span className="text-slate-400 text-[10px] uppercase font-bold block">
                 Question Details ({questions.length}):
               </span>
-              <div className="max-h-36 overflow-y-auto space-y-1 pr-1 text-[10px]">
+              <div className="max-h-48 overflow-y-auto space-y-1 pr-1 text-[10px]">
                 {questions.map((q, idx) => (
-                  <div key={idx} className="p-1.5 rounded bg-slate-800/80 border border-slate-700/50 flex flex-col">
-                    <div className="flex justify-between text-slate-300">
+                  <div key={idx} className="p-1.5 rounded bg-slate-800/80 border border-slate-700/50 flex flex-col gap-0.5">
+                    <div className="flex justify-between items-center text-slate-300">
                       <span className="font-bold">Q{idx + 1} ({q.questionFormat || q.type})</span>
-                      <span className="text-emerald-400">{q.conceptId}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-emerald-400 font-semibold">{q.conceptId}</span>
+                        {q.relevanceScore !== undefined && (
+                          <span
+                            className={`px-1 rounded text-[9px] font-bold ${
+                              q.relevanceScore >= 85
+                                ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
+                                : 'bg-rose-900/60 text-rose-300 border border-rose-700/50'
+                            }`}
+                          >
+                            {q.relevanceScore}%
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    {(q.topicId || q.subtopicId) && (
+                      <div className="text-[9px] text-cyan-400/80 truncate">
+                        {q.topicId}{q.subtopicId ? ` › ${q.subtopicId}` : ''}
+                      </div>
+                    )}
+                    {q.evidenceReference && (
+                      <div className="text-[8.5px] text-amber-300/80 italic truncate" title={q.evidenceReference}>
+                        Ref: {q.evidenceReference}
+                      </div>
+                    )}
                     <span className="text-slate-400 text-[9px] truncate">
                       Method: {q.methodId || q.taskFamily || 'N/A'} | Math: {q.validationStatus?.mathVerified ? '✓' : '—'}
                     </span>
